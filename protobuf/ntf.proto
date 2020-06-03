@@ -1,0 +1,38 @@
+syntax = "proto3";
+
+package ntf.pb;
+
+message NtfTableCreate {
+	optional uint32 dpid = 1;
+	optional uint32 max_entries = 2;
+}
+
+message NtfTableDelete {
+	optional uint32 dpid = 1;
+}
+
+message UserCentricNetworkToken {
+	optional uint32 appid = 1;
+	optional string encryption_key = 2;
+	optional repeated uint64 blacklist = 3;
+}
+
+message NtfEntryCreate {
+	optional uint32 dpid = 1;
+	optional UserCentricNetworkToken token = 2;
+	optional uint32 entry_id = 3;
+	optional bytes dscp = 4;
+}
+
+message NtfEntryModify {
+	optional uint32 dpid = 1;
+	optional UserCentricNetworkToken token = 2;
+	optional uint32 entry_id = 3;
+	optional bytes dscp = 4;
+}
+
+message NtfEntryDelete {
+	optional uint32 dpid = 1;
+	optional uint32 entry_id = 2;
+}
+	
