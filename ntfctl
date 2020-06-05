@@ -1,0 +1,180 @@
+#!/usr/bin/env python
+
+import argparse
+import signal
+import sys
+import time
+
+from scapy.all import *
+
+try:
+    from pybess.bess import *
+except ImportError:
+    print('Cannot import the API module (pybess)')
+    raise
+
+
+DEFAULT_MAX_TABLE_ENTRIES = 8192
+
+
+MAX_RETRIES = 5
+SLEEP_S = 2
+bess = None
+
+
+def run_ntf_command(cmd, type_, **kwargs):
+    global bess
+
+    # TODO: Does this module name need to be unique per device?
+    ntf_module = 'NTF'
+
+    bess.pause_all()
+    for _ in range(MAX_RETRIES):
+        try:
+            bess.run_module_command(ntf_module, cmd, type_, kwargs)
+        except Exception as ex:
+            print('Error running command {}: {}. Retrying in {}sec...'.
+                  format(cmd, ex, SLEEP_S))
+            time.sleep(SLEEP_S)
+        else:
+            bess.resume_all()
+            break
+    else:
+        bess.resume_all()
+        msg = 'Command {} failed for module {}'
+        raise Exception(msg.format(cmd, ntf_module))
+
+
+def ntf_create_table(dpid, max_entries):
+    run_ntf_command('tableCreate', 'NtfTableCreate',
+        dpid=dpid,
+        max_entries=max_entries)
+
+
+def ntf_delete_table(dpid):
+    run_ntf_command('tableDelete', 'NtfTableDelete',
+        dpid=dpid)
+
+
+def ntf_create_entry(dpid, app_id, encryption_key, blacklist, entry_id, dscp):
+    run_ntf_command('entryCreate', 'NtfEntryCreate',
+        dpid=dpid,
+        app_id=app_id,
+        encryption_key=encryption_key,
+        blacklist=blacklist,
+        entry_id=entry_id,
+        dscp=dscp)
+
+
+def ntf_modify_entry(dpid, app_id, encryption_key, blacklist, entry_id, dscp):
+    run_ntf_command('entryModify', 'NtfEntryModify',
+        dpid=dpid,
+        app_id=app_id,
+        encryption_key=encryption_key,
+        blacklist=blacklist,
+        entry_id=entry_id,
+        dscp=dscp)
+
+
+def ntf_delete_entry(dpid, entry_id):
+    run_ntf_command('entryDelete', 'NtfEntryDelete',
+        dpid=dpid,
+        entry_id=entry_id)
+
+
+def connect_bessd(ip, port):
+    print('Connecting to BESS daemon...'),
+    bess = BESS()
+
+    for i in range(MAX_RETRIES):
+        try:
+            if not bess.is_connected():
+                bess.connect(grpc_url=ip + ':' + port)
+        except BESS.RPCError:
+            print(
+                'Error connecting to BESS daemon. Retrying in {}sec...'.format(
+                    SLEEP_S))
+            time.sleep(SLEEP_S)
+        else:
+            break
+    else:
+        raise Exception('BESS connection failure.')
+    return bess
+
+
+def main(args):
+    global bess
+    bess = connect_bessd(args.ip, args.port)
+    args.func(args)
+
+
+def table_create(args):
+    return ntf_create_table(args.dpid, args.max_entries)
+
+def table_delete(args):
+    return ntf_delete_table(args.dpid)
+
+def entry_create(args):
+    return ntf_create_entry(args.dpid, args.app_id, args.encryption_key,
+            args.blacklist, args.entry_id, args.dscp)
+
+def entry_modify(args):
+    return ntf_modify_entry(args.dpid, args.app_id, args.encryption_key,
+            args.blacklist, args.entry_id, args.dscp)
+
+def entry_delete(args):
+    return ntf_delete_entry(args.dpid, args.entry_id)
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(
+        description='Network Token Endpoint for Network Tokens')
+    parser.add_argument('--ip',
+                        type=str,
+                        default='localhost',
+                        help='BESSD address')
+    parser.add_argument('--port', type=str, default='10514', help='BESSD port')
+    subparsers = parser.add_subparsers()
+
+    table_parser = subparsers.add_parser('table')
+    table_subparsers = table_parser.add_subparsers()
+
+    table_create_parser = table_subparsers.add_parser('create')
+    table_create_parser.add_argument('--dpid', type=int, required=True)
+    table_create_parser.add_argument('--max-entries', type=int,
+                                     default=DEFAULT_MAX_TABLE_ENTRIES)
+    table_create_parser.set_defaults(func=table_create)
+
+    table_delete_parser = table_subparsers.add_parser('delete')
+    table_delete_parser.add_argument('--dpid', type=int, required=True)
+    table_delete_parser.set_defaults(func=table_delete)
+
+    entry_parser = subparsers.add_parser('entry')
+    entry_subparsers = entry_parser.add_subparsers()
+
+    entry_create_parser = entry_subparsers.add_parser('create')
+    entry_create_parser.add_argument('--dpid', type=int, required=True)
+    entry_create_parser.add_argument('--app-id', type=int, required=True)
+    entry_create_parser.add_argument('--encryption-key', type=str, required=True)
+    entry_create_parser.add_argument('--blacklist', type=int, action='append')
+    entry_create_parser.add_argument('--entry-id', type=int, required=True)
+    entry_create_parser.add_argument('--dscp', type=int, required=True)
+    entry_create_parser.set_defaults(func=entry_create)
+
+    entry_modify_parser = entry_subparsers.add_parser('modify')
+    entry_modify_parser.add_argument('--dpid', type=int, required=True)
+    entry_modify_parser.add_argument('--app-id', type=int)
+    entry_modify_parser.add_argument('--encryption-key', type=str)
+    entry_modify_parser.add_argument('--blacklist', type=int, action='append')
+    entry_modify_parser.add_argument('--entry-id', type=int)
+    entry_modify_parser.add_argument('--dscp', type=int)
+    entry_modify_parser.set_defaults(func=entry_modify)
+
+    entry_delete_parser = entry_subparsers.add_parser('delete')
+    entry_delete_parser.add_argument('--dpid', type=int, required=True)
+    entry_delete_parser.add_argument('--entry-id', type=int, required=True)
+    entry_delete_parser.set_defaults(func=entry_delete)
+
+    # for holding command-line arguments
+    args = parser.parse_args()
+    main(args)
