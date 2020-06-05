@@ -25,8 +25,10 @@ bess = None
 def run_ntf_command(cmd, type_, **kwargs):
     global bess
 
+    #bess.import_plugin('/opt/ntf/')
+    
     # TODO: Does this module name need to be unique per device?
-    ntf_module = 'NTF'
+    ntf_module = 'ntf'
 
     bess.pause_all()
     for _ in range(MAX_RETRIES):
@@ -46,18 +48,18 @@ def run_ntf_command(cmd, type_, **kwargs):
 
 
 def ntf_create_table(dpid, max_entries):
-    run_ntf_command('tableCreate', 'NtfTableCreate',
+    run_ntf_command('table_create', 'NtfTableCreateArg',
         dpid=dpid,
         max_entries=max_entries)
 
 
 def ntf_delete_table(dpid):
-    run_ntf_command('tableDelete', 'NtfTableDelete',
+    run_ntf_command('table_delete', 'NtfTableDeleteArg',
         dpid=dpid)
 
 
 def ntf_create_entry(dpid, app_id, encryption_key, blacklist, entry_id, dscp):
-    run_ntf_command('entryCreate', 'NtfEntryCreate',
+    run_ntf_command('entry_create', 'NtfEntryCreateArg',
         dpid=dpid,
         app_id=app_id,
         encryption_key=encryption_key,
@@ -67,7 +69,7 @@ def ntf_create_entry(dpid, app_id, encryption_key, blacklist, entry_id, dscp):
 
 
 def ntf_modify_entry(dpid, app_id, encryption_key, blacklist, entry_id, dscp):
-    run_ntf_command('entryModify', 'NtfEntryModify',
+    run_ntf_command('entry_modify', 'NtfEntryModifyArg',
         dpid=dpid,
         app_id=app_id,
         encryption_key=encryption_key,
@@ -77,7 +79,7 @@ def ntf_modify_entry(dpid, app_id, encryption_key, blacklist, entry_id, dscp):
 
 
 def ntf_delete_entry(dpid, entry_id):
-    run_ntf_command('entryDelete', 'NtfEntryDelete',
+    run_ntf_command('entry_delete', 'NtfEntryDeleteArg',
         dpid=dpid,
         entry_id=entry_id)
 

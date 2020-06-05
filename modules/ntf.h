@@ -35,7 +35,7 @@
 
 #include "module.h"
 #include "pb/module_msg.pb.h"
-//#include "pb/network_token_msg.pb.h"
+#include "pb/ntf_msg.pb.h"
 
 #include "utils/cuckoo_map.h"
 #include "utils/endian.h"
@@ -109,9 +109,16 @@ class NTF final : public Module {
   static const gate_idx_t kNumIGates = 2;
   static const gate_idx_t kNumOGates = 2;
   
-  // static const Command cmds;
+  static const Commands cmds;
   
   CommandResponse Init(const bess::pb::EmptyArg &arg);
+
+  CommandResponse CommandTableCreate(const ntf::pb::NtfTableCreateArg &arg);
+  CommandResponse CommandTableDelete(const ntf::pb::NtfTableDeleteArg &arg);
+  CommandResponse CommandEntryCreate(const ntf::pb::NtfEntryCreateArg &arg);
+  CommandResponse CommandEntryModify(const ntf::pb::NtfEntryModifyArg &arg);
+  CommandResponse CommandEntryDelete(const ntf::pb::NtfEntryDeleteArg &arg);
+  
 
   void ProcessBatch(Context *ctx, bess::PacketBatch *batch) override;
 
@@ -120,7 +127,7 @@ class NTF final : public Module {
 
  private:
   // size_t num_vars_;
-  // size_t vars_;
+ // size_t vars_;
   using HashTable = bess::utils::CuckooMap<FlowId, uint64_t, Flow::Hash, Flow::EqualTo>;
 
   // 5 minutes for entry expiration

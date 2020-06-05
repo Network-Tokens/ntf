@@ -2,12 +2,12 @@ syntax = "proto3";
 
 package ntf.pb;
 
-message NtfTableCreate {
+message NtfTableCreateArg {
 	uint32 dpid = 1;
 	uint32 max_entries = 2;
 }
 
-message NtfTableDelete {
+message NtfTableDeleteArg {
 	uint32 dpid = 1;
 }
 
@@ -17,21 +17,21 @@ message UserCentricNetworkToken {
 	repeated uint64 blacklist = 3;
 }
 
-message NtfEntryCreate {
+message NtfEntryCreateArg {
 	uint32 dpid = 1;
 	UserCentricNetworkToken token = 2;
 	uint32 entry_id = 3;
 	bytes dscp = 4;
 }
 
-message NtfEntryModify {
+message NtfEntryModifyArg {
 	uint32 dpid = 1;
 	UserCentricNetworkToken token = 2;
 	uint32 entry_id = 3;
 	bytes dscp = 4;
 }
 
-message NtfEntryDelete {
+message NtfEntryDeleteArg {
 	uint32 dpid = 1;
 	uint32 entry_id = 2;
 }

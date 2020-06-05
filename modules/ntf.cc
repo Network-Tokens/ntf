@@ -7,8 +7,47 @@
 #include "../utils/udp.h"
 #include "../utils/stun.h"
 
+const Commands NTF::cmds = {
+    {"table_create", "NtfTableCreateArg",MODULE_CMD_FUNC(&NTF::CommandTableCreate), Command::THREAD_UNSAFE},
+    {"table_delete", "NtfTableDeleteArg",MODULE_CMD_FUNC(&NTF::CommandTableDelete), Command::THREAD_UNSAFE},
+    {"entry_create", "NtfEntryCreateArg",MODULE_CMD_FUNC(&NTF::CommandEntryCreate), Command::THREAD_UNSAFE},
+    {"entry_modify", "NtfEntryModifyArg",MODULE_CMD_FUNC(&NTF::CommandEntryModify), Command::THREAD_UNSAFE},
+    {"entry_delete", "NtfEntryDeleteArg",MODULE_CMD_FUNC(&NTF::CommandEntryDelete), Command::THREAD_UNSAFE},
+};
+
 CommandResponse
 NTF::Init(const bess::pb::EmptyArg &) {
+  LOG(WARNING) << __FUNCTION__;  
+  return CommandSuccess();
+}
+
+CommandResponse
+NTF::CommandTableCreate(const ntf::pb::NtfTableCreateArg &arg) {
+  LOG(WARNING) << __FUNCTION__ << " " << arg.dpid() << arg.max_entries() ;
+  return CommandSuccess();
+}
+
+CommandResponse
+NTF::CommandTableDelete(const ntf::pb::NtfTableDeleteArg &) {
+  LOG(WARNING) << __FUNCTION__;
+  return CommandSuccess();
+}
+
+CommandResponse
+NTF::CommandEntryCreate(const ntf::pb::NtfEntryCreateArg &) {
+  LOG(WARNING) << __FUNCTION__;
+  return CommandSuccess();
+}
+
+CommandResponse
+NTF::CommandEntryModify(const ntf::pb::NtfEntryModifyArg &) {
+  LOG(WARNING) << __FUNCTION__;  
+  return CommandSuccess();
+}
+
+CommandResponse
+NTF::CommandEntryDelete(const ntf::pb::NtfEntryDeleteArg &) {
+  LOG(WARNING) << __FUNCTION__;  
   return CommandSuccess();
 }
 
