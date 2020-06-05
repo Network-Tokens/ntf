@@ -45,8 +45,9 @@ using bess::utils::be32_t;
 
 class PcapSource final : public Module {
  public:
-  CommandResponse Init(const bess::pb::EmptyArg &arg);
-  void ProcessBatch(Context *ctx, bess::PacketBatch *batch) override;
+  CommandResponse Init(const bess::pb::EmptyArg&);
+  void ProcessBatch(Context*, bess::PacketBatch*) override;
+  struct task_result RunTask(Context*, bess::PacketBatch*, void*);
 
  private:
   pcap_t* pcap = nullptr;

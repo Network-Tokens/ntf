@@ -12,13 +12,13 @@ static const std::string TEMP_PCAP = "/opt/ntf/JitsiMeetCall.pcap";
 CommandResponse
 PcapSource::Init(const bess::pb::EmptyArg &) {
   if (pcap) {
-    return CommandResponse(EINVAL, "PcapSource already initialized");
+    return CommandFailure(EINVAL, "PcapSource already initialized");
   }
 
   char errbuf[PCAP_ERRBUF_SIZE];
   pcap = pcap_open_offline(TEMP_PCAP.c_str(), errbuf);
   if (!pcap) {
-    return CommandFailure(errno, errbuf);
+    return CommandFailure(errno, "Failed to open pcap: %s", errbuf);
   }
 
   task_id_t tid = RegisterTask(nullptr);
@@ -30,12 +30,14 @@ PcapSource::Init(const bess::pb::EmptyArg &) {
 }
 
 void PcapSource::ProcessBatch(Context *ctx, bess::PacketBatch *batch) {
+  const int cnt = batch->cnt();
   DLOG(WARNING) << "ProcessBatch() Received batch with " << cnt << " packets";
   RunNextModule(ctx, batch);
 };
 
 struct task_result PcapSource::RunTask(Context *ctx, bess::PacketBatch *batch,
                                        void *) {
+  const int cnt = batch->cnt();
   DLOG(WARNING) << "RunTask() Received batch with " << cnt << " packets";
 
   // Try reading the next packet from the PCAP file
@@ -54,7 +56,12 @@ struct task_result PcapSource::RunTask(Context *ctx, bess::PacketBatch *batch,
   // Allocate an empty packet from the packet pool
   bess::Packet* pkt = current_worker.packet_pool()->Alloc();
   if(!pkt) {
-    return CommandFailure(ENOMEM, "Failed to allocate packet");
+    DLOG(WARNING) << "Failed to allocate new packet from pool";
+    return {
+      .block = true,
+      .packets = 0,
+      .bits = 0,
+    };
   }
 
   // Copy the packet data from the PCAP into the new packet
@@ -91,4 +98,4 @@ struct task_result PcapSource::RunTask(Context *ctx, bess::PacketBatch *batch,
   };
 };
 
-ADD_MODULE(NTF, "pcap_source", "A source that can replay a PCAP file")
+ADD_MODULE(PcapSource, "pcap_source", "A source that can replay a PCAP file")
