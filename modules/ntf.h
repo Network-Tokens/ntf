@@ -109,18 +109,18 @@ class NTF final : public Module {
   static const gate_idx_t kNumIGates = 2;
   static const gate_idx_t kNumOGates = 2;
   
-  static const Command cmds;
+  // static const Command cmds;
   
   CommandResponse Init(const bess::pb::EmptyArg &arg);
 
   void ProcessBatch(Context *ctx, bess::PacketBatch *batch) override;
 
-  NTF() : Module(), num_vars_(), vars_() {}
+  // NTF() : Module(), num_vars_(), vars_() {}
 
 
  private:
-  size_t num_vars_;
-  size_t vars_;
+  // size_t num_vars_;
+  // size_t vars_;
   using HashTable = bess::utils::CuckooMap<FlowId, uint64_t, Flow::Hash, Flow::EqualTo>;
 
   // 5 minutes for entry expiration
