@@ -21,18 +21,18 @@ message NtfEntryCreateArg {
 	uint32 dpid = 1;
 	UserCentricNetworkToken token = 2;
 	uint32 entry_id = 3;
-	bytes dscp = 4;
+	uint32 dscp = 4;
 }
 
 message NtfEntryModifyArg {
 	uint32 dpid = 1;
 	UserCentricNetworkToken token = 2;
 	uint32 entry_id = 3;
-	bytes dscp = 4;
+	uint32 dscp = 4;
 }
 
 message NtfEntryDeleteArg {
 	uint32 dpid = 1;
-	uint32 entry_id = 2;
+	uint32 appid = 2;
 }
 	

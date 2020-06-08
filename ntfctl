@@ -4,6 +4,7 @@ import argparse
 import signal
 import sys
 import time
+from pybess.plugin_pb.ntf_msg_pb2 import *
 
 from scapy.all import *
 
@@ -22,7 +23,7 @@ SLEEP_S = 2
 bess = None
 
 
-def run_ntf_command(cmd, type_, **kwargs):
+def run_ntf_command(cmd, type_, args):
     global bess
 
     #bess.import_plugin('/opt/ntf/')
@@ -30,10 +31,13 @@ def run_ntf_command(cmd, type_, **kwargs):
     # TODO: Does this module name need to be unique per device?
     ntf_module = 'ntf'
 
+    if args == None:
+        args = {}
+
     bess.pause_all()
     for _ in range(MAX_RETRIES):
         try:
-            bess.run_module_command(ntf_module, cmd, type_, kwargs)
+            bess.run_module_command(ntf_module, cmd, type_, args)
         except Exception as ex:
             print('Error running command {}: {}. Retrying in {}sec...'.
                   format(cmd, ex, SLEEP_S))
@@ -48,41 +52,48 @@ def run_ntf_command(cmd, type_, **kwargs):
 
 
 def ntf_create_table(dpid, max_entries):
-    run_ntf_command('table_create', 'NtfTableCreateArg',
-        dpid=dpid,
-        max_entries=max_entries)
+    args = { 'dpid':dpid, 'max_entries':max_entries}
+
+    run_ntf_command('table_create', 'NtfTableCreateArg', args)
 
 
 def ntf_delete_table(dpid):
-    run_ntf_command('table_delete', 'NtfTableDeleteArg',
-        dpid=dpid)
+    args = {'dpid':dpid}
 
+    run_ntf_command('table_delete', 'NtfTableDeleteArg', args)
 
 def ntf_create_entry(dpid, app_id, encryption_key, blacklist, entry_id, dscp):
-    run_ntf_command('entry_create', 'NtfEntryCreateArg',
-        dpid=dpid,
-        app_id=app_id,
-        encryption_key=encryption_key,
-        blacklist=blacklist,
-        entry_id=entry_id,
-        dscp=dscp)
+    args = {'dpid' : dpid,
+            'entry_id' : entry_id,
+            'token' : {'appid' : app_id,
+                       'encryption_key': encryption_key
+                       }
+            }
+    if blacklist:
+        args['token']['blacklist'] = []
+        for b in blacklist:
+            args['token']['blacklist'].append(b)
 
+    run_ntf_command('entry_create','NtfEntryCreateArg',args)
 
 def ntf_modify_entry(dpid, app_id, encryption_key, blacklist, entry_id, dscp):
-    run_ntf_command('entry_modify', 'NtfEntryModifyArg',
-        dpid=dpid,
-        app_id=app_id,
-        encryption_key=encryption_key,
-        blacklist=blacklist,
-        entry_id=entry_id,
-        dscp=dscp)
+    args = {'dpid' : dpid,
+            'entry_id' : entry_id,
+            'token' : {'appid' : app_id,
+                       'encryption_key': encryption_key
+                       }
+            }
+    if blacklist:
+        args['token']['blacklist'] = []
+        for b in blacklist:
+            args['token']['blacklist'].append(b)
 
+    run_ntf_command('entry_modify', 'NtfEntryModifyArg', args)
 
-def ntf_delete_entry(dpid, entry_id):
-    run_ntf_command('entry_delete', 'NtfEntryDeleteArg',
-        dpid=dpid,
-        entry_id=entry_id)
+def ntf_delete_entry(dpid, app_id):
+    args = {'dpid':dpid, 'appid':app_id}
 
+    run_ntf_command('entry_delete', 'NtfEntryDeleteArg',args)
 
 def connect_bessd(ip, port):
     print('Connecting to BESS daemon...'),
@@ -125,7 +136,7 @@ def entry_modify(args):
             args.blacklist, args.entry_id, args.dscp)
 
 def entry_delete(args):
-    return ntf_delete_entry(args.dpid, args.entry_id)
+    return ntf_delete_entry(args.dpid, args.app_id)
 
 
 if __name__ == '__main__':
@@ -174,7 +185,7 @@ if __name__ == '__main__':
 
     entry_delete_parser = entry_subparsers.add_parser('delete')
     entry_delete_parser.add_argument('--dpid', type=int, required=True)
-    entry_delete_parser.add_argument('--entry-id', type=int, required=True)
+    entry_delete_parser.add_argument('--app-id', type=int, required=True)
     entry_delete_parser.set_defaults(func=entry_delete)
 
     # for holding command-line arguments
