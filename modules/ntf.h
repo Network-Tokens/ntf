@@ -45,14 +45,48 @@ using bess::utils::be32_t;
 /**
  * NTF detects network tokens in STUN messages,
  * and sets the appropriate DSCP marking. 
+ * 
+ * Method of operation:
+ * 
+ * NTF holds a number of network token entries in tokenTable. Each entry
+ * describes a token, and is indexed through a unique app_id. app_id means
+ * a network token application. For the purposes of this implementation an app_id
+ * identifies a service offered by an operator. A network token entry includes the 
+ * key with which tokens are encrypted/decrypted, a blacklist, and the actions to take
+ * when a token is detected. 
+ * 
+ * The only supported action right now is to mark the packet with a specific DSCP codepoint. 
+ * To prevent abuse, NTF assumes authoritative actions with regards to DSCP markings. If deemed responsible 
+ * for a specific codepoint, only packets/flows with valid tokens will have this marking. If such marking
+ * is found in other flows, it will be reset to 0. 
+ * 
+ * Every packet that enters NTF is checked for network tokens (currently only as STUN attributes). 
+ * When a valid token is detected, NTF enforces the respective action and sets the DSCP marking.
+ * NTF also (temporarily) stores the 5-tuple of this flow into flow table, so that subsequent packets of
+ * this flow are associated with this token.
+ * 
+ * Packets with no tokens (or with invalid/unverified tokens) pass through the NTF with no changes 
+ * (apart from DSCP reseting as discussed earlier). 
  */
 
 struct NtfFlowEntry {
   uint64_t last_refresh; // in nanoseconds
+  uint8_t dscp;
 };
 
+
+
 struct NetworkToken {
-  be32_t app_id;
+#if __BYTE_ORDER == __LITTLE_ENDIAN  
+  uint8_t reflect_type: 4;
+  uint32_t app_id : 28;
+#elif __BYTE_ORDER == __BIG_ENDIAN
+  uint32_t app_id : 28;
+  uint8_t reflect_type : 4;
+#else
+#error __BYTE_ORDER must be defined.
+#endif 
+
   uint8_t * ciphertext;
 };
 
@@ -96,8 +130,16 @@ struct Flow {
       return (ips && ports) && (id1.protocol == id2.protocol);
     }
   };
-};   
-  
+};
+
+struct UserCentricNetworkTokenEntry {
+  be32_t app_id;
+  std::string encryption_key;
+  std::list<uint64_t> blacklist;
+  uint32_t id;
+  uint8_t dscp;
+};
+
 class NTF final : public Module {
  public:
   enum Direction
@@ -110,6 +152,9 @@ class NTF final : public Module {
   static const gate_idx_t kNumOGates = 2;
   
   static const Commands cmds;
+
+  uint32_t dpid;
+  uint16_t max_token_entries;
   
   CommandResponse Init(const bess::pb::EmptyArg &arg);
 
@@ -126,27 +171,58 @@ class NTF final : public Module {
 
 
  private:
-  // size_t num_vars_;
- // size_t vars_;
-  using HashTable = bess::utils::CuckooMap<FlowId, uint64_t, Flow::Hash, Flow::EqualTo>;
+  using FlowTable = bess::utils::CuckooMap<FlowId, NtfFlowEntry, Flow::Hash, Flow::EqualTo>;
+  using TokenTable = bess::utils::CuckooMap<be32_t, UserCentricNetworkTokenEntry>;
 
+  
   // 5 minutes for entry expiration
   static const uint64_t kTimeOutNs = 300ull * 1000 * 1000 * 1000;
-
-  HashTable::Entry *CreateNewEntry(const Flow &flow, uint64_t now);
+  std::set<uint8_t> authoritative_dscp_markings;
+  
+  FlowTable::Entry *CreateNewEntry(const Flow &flow, uint64_t now);
 
   template <Direction dir>
     void DoProcessBatch(Context *ctx, bess::PacketBatch *batch);
 
+  /**
+   * Checks whether a packet contains a network token. 
+   * Currently looks at tokens encoded as STUN attributes. This function
+   * just detects tokens, but doesn't attempt to verify and/or evaluate them.
+   * 
+   * Returns pointer to the network token, or nullptr if no token found.
+   */ 
   NetworkToken * ExtractNetworkTokenFromPacket(bess::Packet *pkt);
+
+  // Get  a flow id (5-tuple) from a packet. 
   FlowId GetFlowId(bess::Packet *pkt);
+
+  // Get a reverse flow id by swapping ip address and transport ports.
   FlowId GetReverseFlowId(FlowId flow_id);
+
+  /**
+   * CheckPacketForNetworkToken performs all token-related functions for a packet.
+   * It uses ExtractNetworkTokenFromPacket to detect token for a packet.
+   * Verifies that this is a valid token and if so, evaluates it. 
+   * It installs the necessary state to apply desired actions (e.g., DSCP marking) for
+   * follow-up packets that belong to the same flow.
+   */
   void CheckPacketForNetworkToken(Context *ctx, bess::Packet *pkt);
+
+  /**
+   * Resets the token-specific DSCP marking for flows that have not been whitelisted through a token.
+   */ 
   void ResetDscpMarking(bess::Packet *pkt);
-  void SetDscpMarking(bess::Packet *pkt);
+  /**
+   * Sets the token-specific DSCP marking for flows that have been whitelisted through a token.
+   */
+  void SetDscpMarking(bess::Packet *pkt, uint8_t dscp);
 
-
-  HashTable map_;
+  void UpdateAuthoritativeDscpMarkings();
+  
+  // Per-flow soft state for flows already whitelisted by a token.
+  FlowTable flowMap_;
+  // State for tokens.
+  TokenTable tokenMap_;
   uint8_t kDSCP = 0;
   
 };

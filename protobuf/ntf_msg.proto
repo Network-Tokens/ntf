@@ -12,7 +12,7 @@ message NtfTableDeleteArg {
 }
 
 message UserCentricNetworkToken {
-	uint32 appid = 1;
+	uint32 app_id = 1;
 	string encryption_key = 2;
 	repeated uint64 blacklist = 3;
 }
@@ -33,6 +33,6 @@ message NtfEntryModifyArg {
 
 message NtfEntryDeleteArg {
 	uint32 dpid = 1;
-	uint32 appid = 2;
+	uint32 app_id = 2;
 }
 	

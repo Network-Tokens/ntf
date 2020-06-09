@@ -65,7 +65,7 @@ def ntf_delete_table(dpid):
 def ntf_create_entry(dpid, app_id, encryption_key, blacklist, entry_id, dscp):
     args = {'dpid' : dpid,
             'entry_id' : entry_id,
-            'token' : {'appid' : app_id,
+            'token' : {'app_id' : app_id,
                        'encryption_key': encryption_key
                        }
             }
@@ -79,7 +79,7 @@ def ntf_create_entry(dpid, app_id, encryption_key, blacklist, entry_id, dscp):
 def ntf_modify_entry(dpid, app_id, encryption_key, blacklist, entry_id, dscp):
     args = {'dpid' : dpid,
             'entry_id' : entry_id,
-            'token' : {'appid' : app_id,
+            'token' : {'app_id' : app_id,
                        'encryption_key': encryption_key
                        }
             }
@@ -91,7 +91,7 @@ def ntf_modify_entry(dpid, app_id, encryption_key, blacklist, entry_id, dscp):
     run_ntf_command('entry_modify', 'NtfEntryModifyArg', args)
 
 def ntf_delete_entry(dpid, app_id):
-    args = {'dpid':dpid, 'appid':app_id}
+    args = {'dpid':dpid, 'app_id':app_id}
 
     run_ntf_command('entry_delete', 'NtfEntryDeleteArg',args)
 
