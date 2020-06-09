@@ -50,6 +50,8 @@ class PcapSource final : public Module {
   struct task_result RunTask(Context*, bess::PacketBatch*, void*);
 
  private:
+  bool OpenPcap(const std::string& filename);
+
   pcap_t* pcap = nullptr;
 };
 
