@@ -3,9 +3,13 @@
 #include <math.h>
 #include <algorithm>
 
+#include "../utils/ether.h"
 #include "../utils/ip.h"
 #include "../utils/udp.h"
 #include "../utils/stun.h"
+
+using bess::utils::Ethernet;
+using bess::utils::Ipv4;
 
 static const std::string TEMP_PCAP = "/opt/ntf/JitsiMeetCall.pcap";
 
@@ -26,6 +30,7 @@ PcapSource::Init(const bess::pb::EmptyArg &) {
     return CommandFailure(ENOMEM, "Task creation failed");
   }
 
+  DLOG(INFO) << "PcapSource::Init(): Success";
   return CommandSuccess();
 }
 
@@ -64,35 +69,34 @@ struct task_result PcapSource::RunTask(Context *ctx, bess::PacketBatch *batch,
     };
   }
 
-  // Copy the packet data from the PCAP into the new packet
-  int caplen = header.caplen;
-  int copy_len = std::min(caplen, static_cast<int>(pkt->tailroom()));
-  bess::utils::CopyInlined(pkt->append(copy_len), packet, copy_len, true);
+  char *p = pkt->buffer<char *>() + SNBUF_HEADROOM;
+  Ethernet *eth = reinterpret_cast<Ethernet *>(p);
+  const int ethernet_head_room = sizeof(Ethernet);
 
-  int nb_segs = 1;
-  packet += copy_len;
-  caplen -= copy_len;
-  bess::Packet* m = pkt;
+  // Shouldn't matter if it's IPv6, the packet starts at the same offset.
+  Ipv4 *ip = reinterpret_cast<Ipv4 *>(eth + 1);
+  char *offset = reinterpret_cast<char*>(ip);
 
-  // If the PCAP packet is larger than the packet size we were allocated,
-  // segment the rest of the packet & add this too
-  while (caplen > 0) {
-    m->set_next(current_worker.packet_pool()->Alloc());
-    m = m->next();
-    nb_segs++;
+  int size = header.caplen;
 
-    copy_len = std::min(caplen, static_cast<int>(m->tailroom()));
-    bess::utils::Copy(m->append(copy_len), packet, copy_len, true);
+  pkt->set_data_off(SNBUF_HEADROOM);
+  pkt->set_total_len(size + ethernet_head_room);
+  pkt->set_data_len(size + ethernet_head_room);
+  bess::utils::Copy(offset, packet, size, true);
 
-    packet += copy_len;
-    caplen -= copy_len;
+  int copy_len = std::min(size, static_cast<int>(pkt->tailroom()));
+  size -= copy_len;
+
+  if (size > 0) {
+    DLOG(WARNING) << "TODO: Packet needs segmented";
   }
-  pkt->set_nb_segs(nb_segs);
+
+  batch->add(pkt);
 
   RunNextModule(ctx, batch);
 
   return {
-      .block = true,
+      .block = false,
       .packets = 1,
       .bits = header.caplen * 8,
   };
