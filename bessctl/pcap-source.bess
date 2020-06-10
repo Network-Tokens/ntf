@@ -13,7 +13,7 @@ encap::GenericEncap(fields=[
 
 s::Sink()
 
-p -> decap -> ntf -> encap -> s
+p -> ntf -> encap -> s
 
 open('/tmp/test1.pcap','w').close()
 open('/tmp/test2.pcap','w').close()

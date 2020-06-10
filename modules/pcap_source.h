@@ -52,17 +52,37 @@ class PcapSource final : public Module {
   struct task_result RunTask(Context*, bess::PacketBatch*, void*);
 
  private:
+  // Loads the next packet from the pcap file.  Populates next_packet_hdr.
+  // Returns nullptr the end of the pcap has been reached.
   const u_char* LoadNextPacket();
+
+  // Create a bess::Packet with the contents of the next outgoing packet
   bess::Packet* PrepareNextPacket();
 
+  // Handle to pcap file
   pcap_t* pcap = nullptr;
+
+  // Indicates who is the "client" in the pcap, used for determining which
+  // direction to send packets.
   std::string src_ip;
+
+  // If false, we will send packets FROM src_ip.  If true, we will send packets
+  // TO src_ip.
   bool reverse = false;
+
+  // Parsed address.  TODO: Support for IPv6.
   be32_t src_addr;
 
+  // Pointer to raw data of next packet (from pcap file)
   const u_char* next_packet;
+
+  // Information (such as timestamp) of the next packet
   pcap_pkthdr next_packet_hdr;
+
+  // Time (relative to boot) when the pcap replay started in nanoseconds
   uint64_t start_ns;
+
+  // Timestamp (POSIX) of the first packet in nanoseconds
   uint64_t first_packet_ns;
 };
 

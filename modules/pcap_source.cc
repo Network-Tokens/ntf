@@ -18,7 +18,8 @@ static inline uint64_t Now() {
 }
 
 const Commands PcapSource::cmds = {
-  {"load", "PcapSourceArg", MODULE_CMD_FUNC(&PcapSource::CommandLoad), Command::THREAD_UNSAFE},
+  { "load", "PcapSourceArg",
+     MODULE_CMD_FUNC(&PcapSource::CommandLoad), Command::THREAD_UNSAFE },
 };
 
 CommandResponse
@@ -55,13 +56,13 @@ PcapSource::CommandLoad(const PcapSourceArg &args) {
   start_ns = Now();
   first_packet_ns = 0;
 
-  LOG(INFO) << "PcapSource::Init(): Success";
+  DLOG(INFO) << "PcapSource::Init(): Success";
   return CommandSuccess();
 }
 
 void PcapSource::ProcessBatch(Context *ctx, bess::PacketBatch *batch) {
   const int cnt = batch->cnt();
-  LOG(WARNING) << "ProcessBatch() Received batch with " << cnt << " packets";
+  DLOG(WARNING) << "ProcessBatch() Received batch with " << cnt << " packets";
   RunNextModule(ctx, batch);
 };
 
@@ -104,7 +105,7 @@ PcapSource::PrepareNextPacket() {
       // Allocate an empty packet from the packet pool
   bess::Packet *pkt = current_worker.packet_pool()->Alloc();
   if(!pkt) {
-    LOG(WARNING) << "Failed to allocate new packet from pool";
+    DLOG(WARNING) << "Failed to allocate new packet from pool";
     return nullptr;
   }
 
@@ -119,7 +120,7 @@ PcapSource::PrepareNextPacket() {
 
   size -= copy_len;
   if (size > 0) {
-    LOG(WARNING) << "TODO: Packet needs segmented";
+    DLOG(WARNING) << "TODO: sending packets too fast...";
   }
   return pkt;
 }
@@ -130,12 +131,15 @@ struct task_result PcapSource::RunTask(Context *ctx, bess::PacketBatch *batch,
   batch->clear();
 
   while(pcap != nullptr) {
+    // Load the next packet if it's not already loaded.  It might already be
+    // loaded if we did it last cycle but it was not time to send yet.
     if (!next_packet) {
       next_packet = LoadNextPacket();
     }
 
+    // If next_packet is null at this point, we have reached the end of the
+    // trace.
     if (!next_packet) {
-      // All done
       return { .block = true, .packets = 0, .bits = 0 };
     }
 
@@ -143,20 +147,24 @@ struct task_result PcapSource::RunTask(Context *ctx, bess::PacketBatch *batch,
     const uint64_t next_ts = (next_packet_hdr.ts.tv_sec * 1e9 + 
       next_packet_hdr.ts.tv_usec * 1000) - first_packet_ns + start_ns;
 
-    if (next_ts < now) {
-      bess::Packet* pkt = PrepareNextPacket();
-      if(!pkt) {
-        return { .block = true, .packets = 0, .bits = 0 };
-      }
-
-      batch->add(pkt);
-      total_bytes += next_packet_hdr.caplen;
-      next_packet = nullptr;
-    } else {
+    if (next_ts > now) {
+      // We have caught up to where we should be.
       break;
     }
+
+    bess::Packet* pkt = PrepareNextPacket();
+    if(!pkt) {
+      // Packet allocation failed - this shouldn't happen, so stop sending.
+      return { .block = true, .packets = 0, .bits = 0 };
+    }
+
+    batch->add(pkt);
+    total_bytes += next_packet_hdr.caplen;
+    next_packet = nullptr;
   }
 
+  // Pass any allocated packets to the next module.  It is possible that batch
+  // may contain no packets.
   RunNextModule(ctx, batch);
 
   return {
