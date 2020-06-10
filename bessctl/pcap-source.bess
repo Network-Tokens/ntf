@@ -1,2 +1,24 @@
+# p::PcapSource(
+#   filename="/opt/ntf/JitsiMeetCall.pcap" src_ip="172.31.0.3", reverse=True)
 
-PcapSource() -> Sink()
+p::PcapSource()
+
+decap::GenericDecap(bytes=14)
+
+ntf::NTF()
+
+encap::GenericEncap(fields=[
+  {'size': 6, 'value': {'value_int': 0x020000000001}},
+  {'size': 6, 'value': {'value_int': 0x0619deadbeef}},
+  {'size': 2, 'value': {'value_int': 0x0800}}
+])
+
+s::Sink()
+
+p -> decap -> ntf -> encap -> s
+
+open('/tmp/test1.pcap','w').close()
+open('/tmp/test2.pcap','w').close()
+
+bess.tcpdump_gate(True, 'test',"p", gate=0, direction="out", fifo="/tmp/test1.pcap")
+bess.tcpdump_gate(True, 'test',"encap", gate=0, direction="out", fifo="/tmp/test2.pcap")

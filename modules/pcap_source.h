@@ -39,20 +39,32 @@
 
 #include "utils/cuckoo_map.h"
 #include "utils/endian.h"
+#include "pb/pcap_source.pb.h"
 #include <pcap/pcap.h>
 
 using bess::utils::be32_t;
 
 class PcapSource final : public Module {
  public:
-  CommandResponse Init(const bess::pb::EmptyArg&);
+  static const Commands cmds;
+  CommandResponse Init(const PcapSourceArg &arg);
+  CommandResponse CommandLoad(const PcapSourceArg &arg);
   void ProcessBatch(Context*, bess::PacketBatch*) override;
   struct task_result RunTask(Context*, bess::PacketBatch*, void*);
 
  private:
-  bool OpenPcap(const std::string& filename);
+  const u_char* LoadNextPacket();
+  bess::Packet* PrepareNextPacket();
 
   pcap_t* pcap = nullptr;
+  std::string src_ip;
+  bool reverse = false;
+  be32_t src_addr;
+
+  const u_char* next_packet;
+  pcap_pkthdr next_packet_hdr;
+  uint64_t start_ns;
+  uint64_t first_packet_ns;
 };
 
 #endif // BESS_MODULES_PCAP_SOURCE_H_
