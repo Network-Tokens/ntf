@@ -4,6 +4,7 @@
 #include <algorithm>
 
 #include "../utils/ip.h"
+#include "../utils/ether.h"
 #include "../utils/udp.h"
 #include "../utils/stun.h"
 
@@ -265,10 +266,12 @@ void NTF::ResetDscpMarking(bess::Packet *pkt) {
   if (ip->type_of_service == 0) {
     return;
   }
+
   // If TOS is one of our authoritative DSCP markings, set it to 0,
   // otherwise leave as is.
-  if (authoritative_dscp_markings.count(ip->type_of_service) > 0)
+  if (authoritative_dscp_markings.count(ip->type_of_service) > 0) {
     ip->type_of_service = 0;
+  }
   
   return;
 }

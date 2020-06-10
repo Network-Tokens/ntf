@@ -67,7 +67,9 @@ def ntf_create_entry(dpid, app_id, encryption_key, blacklist, entry_id, dscp):
             'entry_id' : entry_id,
             'token' : {'app_id' : app_id,
                        'encryption_key': encryption_key
-                       }
+                       },
+            'dscp': dscp
+            
             }
     if blacklist:
         args['token']['blacklist'] = []
@@ -81,7 +83,8 @@ def ntf_modify_entry(dpid, app_id, encryption_key, blacklist, entry_id, dscp):
             'entry_id' : entry_id,
             'token' : {'app_id' : app_id,
                        'encryption_key': encryption_key
-                       }
+                       },
+            'dscp':dscp
             }
     if blacklist:
         args['token']['blacklist'] = []
