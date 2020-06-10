@@ -1,0 +1,4 @@
+message PcapSourceArg {
+	required string filename = 1;
+	optional bool reverse = 2;
+}
