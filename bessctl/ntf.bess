@@ -1,50 +1,36 @@
-# Copyright (c) 2014-2017, The Regents of the University of California.
-# Copyright (c) 2016-2017, Nefeli Networks, Inc.
-# All rights reserved.
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions are met:
-#
-# * Redistributions of source code must retain the above copyright notice, this
-# list of conditions and the following disclaimer.
-#
-# * Redistributions in binary form must reproduce the above copyright notice,
-# this list of conditions and the following disclaimer in the documentation
-# and/or other materials provided with the distribution.
-#
-# * Neither the names of the copyright holders nor the names of their
-# contributors may be used to endorse or promote products derived from this
-# software without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-# ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE
-# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
-# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
-# CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
-# ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-# POSSIBILITY OF SUCH DAMAGE.
-
 import scapy.all as scapy
+import os
+
+# 'show module' command shows detailed stats/parameters
+
+pkt_size = int($BESS_PKT_SIZE!'60')
+assert(60 <= pkt_size <= 1522)
 
 eth = scapy.Ether(src='02:1e:67:9f:4d:ae', dst='06:16:3e:1b:72:32')
-ip = scapy.IP(src='192.168.1.1', dst='10.0.0.1')
-udp = scapy.UDP(sport=10001, dport=10002)
-payload = 'helloworld'
-pkt_bytes = bytes(eth/ip/udp/payload)
+ip = scapy.IP(src='10.0.0.1', dst='10.0.0.2', tos=1)   # dst IP is overwritten
+tcp = scapy.TCP(sport=10001, dport=10002)
+payload = ('hello' + '0123456789' * 200)[:pkt_size-len(eth/ip/tcp)]
+pkt = eth/ip/tcp/payload
+pkt_data = bytes(pkt)
 
-Source() -> Rewrite(templates=[pkt_bytes]) -> rr::RoundRobin(gates=[1, 2])
+# NOTE: without quick_rampup=1, it takes a while to converge to
+# the desied load level, especially when flow duration is pareto distribution
 
-# src MAC address
-rr:1 \
-    -> Update(fields=[{'offset': 6, 'size': 6, 'value': 0x1234567890ab}]) \
-    -> Sink()
+f::FlowGen(template=pkt_data, pps=2, flow_rate = 1, flow_duration = 10.0, \
+        arrival='exponential', duration='pareto', quick_rampup=True)
+decap1::GenericDecap(bytes=14)
+decap2::GenericDecap(bytes=14)
+s::Sink()
+ntf::NTF()
 
-# UDP src/dst ports
-rr:2 \
-    -> ntf::NTF() \
-    -> Sink()
+encap1::GenericEncap(fields=[{'size': 6, 'value': {'value_int': 0x020000000001}}, {'size': 6, 'value': {'value_int': 0x0619deadbeef}},{'size': 2, 'value': {'value_int':0x0800}}])
+encap2::GenericEncap(fields=[{'size': 6, 'value': {'value_int': 0x0619deadbeef}}, {'size': 6, 'value': {'value_int':0x020000000001 }},{'size': 2, 'value': {'value_int':0x0800}}])
 
+
+f->decap1->0:ntf:1->encap1->MACSwap()->IPSwap()->decap2->encap2->s # ->decap2->1:ntf:0->encap2->s
+
+open('/tmp/test1.pcap','w').close()
+open('/tmp/test2.pcap','w').close()
+
+bess.tcpdump_gate(True, 'test',"encap1", gate=0, direction="out", fifo="/tmp/test1.pcap")
+# bess.tcpdump_gate(True, 'test',"encap2", gate=0, direction="out", fifo="/tmp/test2.pcap")
