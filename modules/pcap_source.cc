@@ -11,6 +11,7 @@
 
 using bess::utils::Ethernet;
 using bess::utils::Ipv4;
+using ntf::pb::PcapSourceArg;
 
 static inline uint64_t Now() {
   return rdtsc() * 1e9 / tsc_hz;
@@ -26,24 +27,21 @@ PcapSource::Init(const PcapSourceArg &args) {
 }
 
 CommandResponse
-PcapSource::CommandLoad(const PcapSourceArg &) {
+PcapSource::CommandLoad(const PcapSourceArg &args) {
   if (pcap) {
     pcap_close(pcap);
     pcap = nullptr;
   }
 
-  // src_ip = args.src_ip()
-  src_ip = "172.31.0.3";
+  src_ip = args.src_ip();
   if (!ParseIpv4Address(src_ip, &src_addr)) {
     return CommandFailure(errno, "Invalid IP address: %s", src_ip.c_str());
   }
 
-  // reverse = args.reverse()
-  reverse = false;
+  reverse = args.reverse();
 
   char errbuf[PCAP_ERRBUF_SIZE];
-  // pcap = pcap_open_offline(args.filename().c_str(), errbuf);
-  pcap = pcap_open_offline("/opt/ntf/JitsiMeetCall.pcap", errbuf);
+  pcap = pcap_open_offline(args.filename().c_str(), errbuf);
   if (!pcap) {
     return CommandFailure(errno, "Failed to open pcap: %s", errbuf);
   }

@@ -1,4 +1,9 @@
+syntax = "proto3";
+
+package ntf.pb;
+
 message PcapSourceArg {
-	required string filename = 1;
-	optional bool reverse = 2;
+  string filename = 1;
+  string src_ip = 2;
+  bool reverse = 3;
 }

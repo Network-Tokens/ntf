@@ -35,7 +35,6 @@
 
 #include "module.h"
 #include "pb/module_msg.pb.h"
-//#include "pb/network_token_msg.pb.h"
 
 #include "utils/cuckoo_map.h"
 #include "utils/endian.h"
@@ -47,8 +46,8 @@ using bess::utils::be32_t;
 class PcapSource final : public Module {
  public:
   static const Commands cmds;
-  CommandResponse Init(const PcapSourceArg &arg);
-  CommandResponse CommandLoad(const PcapSourceArg &arg);
+  CommandResponse Init(const ntf::pb::PcapSourceArg &arg);
+  CommandResponse CommandLoad(const ntf::pb::PcapSourceArg &arg);
   void ProcessBatch(Context*, bess::PacketBatch*) override;
   struct task_result RunTask(Context*, bess::PacketBatch*, void*);
 
