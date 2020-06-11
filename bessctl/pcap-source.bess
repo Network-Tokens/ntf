@@ -1,20 +1,31 @@
-p::PcapSource(
-  filename="/opt/ntf/JitsiMeetCall.pcap", src_ip="172.31.0.3", reverse=False)
+src_ip = ["172.31.0.3"]
 
-decap::GenericDecap(bytes=14)
+p_up::PcapSource(
+  filename="/opt/ntf/JitsiMeetCall.pcap", src_ip=src_ip, reverse=False)
 
-ntf::NTF()
+p_down::PcapSource(
+  filename="/opt/ntf/JitsiMeetCall.pcap", src_ip=src_ip, reverse=True)
 
-encap::GenericEncap(fields=[
+ntf_up::NTF()
+ntf_down::NTF()
+
+encap_up::GenericEncap(fields=[
   {'size': 6, 'value': {'value_int': 0x020000000001}},
   {'size': 6, 'value': {'value_int': 0x0619deadbeef}},
   {'size': 2, 'value': {'value_int': 0x0800}}
 ])
 
-s::Sink()
+encap_down::GenericEncap(fields=[
+  {'size': 6, 'value': {'value_int': 0x0619deadbeef}},
+  {'size': 6, 'value': {'value_int': 0x020000000001}},
+  {'size': 2, 'value': {'value_int': 0x0800}}
+])
 
-p -> ntf -> encap -> s
+s_up::Sink()
+s_down::Sink()
+
+p_up -> ntf_up -> encap_up -> s_up
+p_down -> ntf_down -> encap_down -> s_down
 
 open('/tmp/test.pcap','w').close()
-
-bess.tcpdump_gate(True, 'test', "encap", gate=0, direction="out", fifo="/tmp/test.pcap")
+bess.tcpdump_gate(True, 'test', "encap_up", gate=0, direction="out", fifo="/tmp/test.pcap")

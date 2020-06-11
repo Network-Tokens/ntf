@@ -34,11 +34,10 @@
 #include <map>
 
 #include "module.h"
-#include "pb/module_msg.pb.h"
 
 #include "utils/cuckoo_map.h"
 #include "utils/endian.h"
-#include "pb/pcap_source.pb.h"
+#include "pb/pcap_source_msg.pb.h"
 #include <pcap/pcap.h>
 
 using bess::utils::be32_t;
@@ -62,16 +61,19 @@ class PcapSource final : public Module {
   // Handle to pcap file
   pcap_t* pcap = nullptr;
 
-  // Indicates who is the "client" in the pcap, used for determining which
-  // direction to send packets.
-  std::string src_ip;
+  // Link type of pcap
+  int link_type = DLT_RAW;
 
   // If false, we will send packets FROM src_ip.  If true, we will send packets
   // TO src_ip.
   bool reverse = false;
 
-  // Parsed address.  TODO: Support for IPv6.
-  be32_t src_addr;
+  // Address of the "client" in the pcap, used for determining which direciton
+  // to send packets.
+  std::string src_addr;
+
+  // Same as src_addr but for IPv6
+  std::string src_addr6;
 
   // Pointer to raw data of next packet (from pcap file)
   const u_char* next_packet;

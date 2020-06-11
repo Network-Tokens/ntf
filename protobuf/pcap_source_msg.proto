@@ -4,6 +4,6 @@ package ntf.pb;
 
 message PcapSourceArg {
   string filename = 1;
-  string src_ip = 2;
-  bool reverse = 3;
+  bool reverse = 2;
+  repeated string src_ip = 3;
 }

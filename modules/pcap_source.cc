@@ -1,7 +1,9 @@
 #include "pcap_source.h"
 #include <algorithm>
+#include <arpa/inet.h>
 #include <glog/logging.h>
 #include <math.h>
+#include <netinet/in.h>
 
 #include "../utils/ether.h"
 #include "../utils/ip.h"
@@ -9,13 +11,8 @@
 #include "../utils/time.h"
 #include "../utils/udp.h"
 
-using bess::utils::Ethernet;
-using bess::utils::Ipv4;
+using namespace bess::utils;
 using ntf::pb::PcapSourceArg;
-
-static inline uint64_t Now() {
-  return rdtsc() * 1e9 / tsc_hz;
-}
 
 const Commands PcapSource::cmds = {
   { "load", "PcapSourceArg",
@@ -34,9 +31,22 @@ PcapSource::CommandLoad(const PcapSourceArg &args) {
     pcap = nullptr;
   }
 
-  src_ip = args.src_ip();
-  if (!ParseIpv4Address(src_ip, &src_addr)) {
-    return CommandFailure(errno, "Invalid IP address: %s", src_ip.c_str());
+  // First try parsing as IPv4
+  for(const auto& src_ip : args.src_ip()) {
+    be32_t addr;
+    if (ParseIpv4Address(src_ip, &addr)) {
+      const char *data = reinterpret_cast<const char *>(&addr);
+      src_addr = std::string(data, sizeof(addr));
+    } else {
+      // ... then IPv6
+      struct in6_addr addr6;
+      if (inet_pton(AF_INET6, src_ip.c_str(), &addr6) == 1) {
+        const char *data = reinterpret_cast<const char*>(addr6.s6_addr);
+        src_addr6 = std::string(data, sizeof(addr6.s6_addr));
+      } else {
+        return CommandFailure(errno, "Invalid IP address: %s", src_ip.c_str());
+      }
+    }
   }
 
   reverse = args.reverse();
@@ -47,16 +57,30 @@ PcapSource::CommandLoad(const PcapSourceArg &args) {
     return CommandFailure(errno, "Failed to open pcap: %s", errbuf);
   }
 
+  link_type = pcap_datalink(pcap);
+  switch (link_type) {
+  case DLT_EN10MB:
+  case DLT_RAW:
+    break;
+  default:
+    pcap_close(pcap);
+    pcap = nullptr;
+    return CommandFailure(EINVAL, "Invalid link type: %s",
+        pcap_datalink_val_to_name(link_type));
+  }
+
   task_id_t tid = RegisterTask(nullptr);
   if (tid == INVALID_TASK_ID) {
     pcap_close(pcap);
     pcap = nullptr;
     return CommandFailure(ENOMEM, "Task creation failed");
   }
-  start_ns = Now();
+
+  start_ns = 0;
   first_packet_ns = 0;
 
-  DLOG(INFO) << "PcapSource::Init(): Success";
+  LOG(INFO) << "PcapSource::Load(): Loaded " << args.filename() << ", "
+               "link_type: " << pcap_datalink_val_to_name(link_type);
   return CommandSuccess();
 }
 
@@ -85,16 +109,29 @@ PcapSource::LoadNextPacket() {
         next_packet_hdr.ts.tv_usec * 1000;
     }
 
-    // const Ethernet *eth = reinterpret_cast<const Ethernet *>(packet);
-    const Ipv4 *ip = reinterpret_cast<const Ipv4 *>(packet);
-    if (!reverse) {
-      if (ip->src == src_addr) {
-        return packet;
-      }
-    } else {
-      if (ip->dst == src_addr) {
-        return packet;
-      }
+    size_t ip_offset = 0;
+    switch (link_type) {
+    case DLT_RAW:
+      break;
+    case DLT_EN10MB:
+      ip_offset = sizeof(Ethernet);
+      break;
+    }
+
+    bool matches = false;
+    const u_char* ip_start = packet + ip_offset;
+
+    const Ipv4 *ip = reinterpret_cast<const Ipv4 *>(ip_start);
+    if (ip->version == 4 && src_addr.size() == 4) {
+      const u_char* addr = ip_start + (reverse ? 16 : 12);
+      matches = (0 == memcmp(addr, src_addr.data(), src_addr.size()));
+    } else if (ip->version == 6 && src_addr6.size() == 16) {
+      const u_char* addr = ip_start + (reverse ? 24 : 8);
+      matches = (0 == memcmp(addr, src_addr6.data(), src_addr6.size()));
+    }
+
+    if (matches) {
+      return packet;
     }
   }
   return nullptr;
@@ -102,7 +139,7 @@ PcapSource::LoadNextPacket() {
 
 bess::Packet *
 PcapSource::PrepareNextPacket() {
-      // Allocate an empty packet from the packet pool
+  // Allocate an empty packet from the packet pool
   bess::Packet *pkt = current_worker.packet_pool()->Alloc();
   if(!pkt) {
     DLOG(WARNING) << "Failed to allocate new packet from pool";
@@ -130,6 +167,10 @@ struct task_result PcapSource::RunTask(Context *ctx, bess::PacketBatch *batch,
   size_t total_bytes = 0;
   batch->clear();
 
+  if (unlikely(start_ns == 0)) {
+    start_ns = ctx->current_ns;
+  }
+
   while(pcap != nullptr) {
     // Load the next packet if it's not already loaded.  It might already be
     // loaded if we did it last cycle but it was not time to send yet.
@@ -143,7 +184,7 @@ struct task_result PcapSource::RunTask(Context *ctx, bess::PacketBatch *batch,
       return { .block = true, .packets = 0, .bits = 0 };
     }
 
-    const uint64_t now = Now();
+    const uint64_t now = ctx->current_ns;
     const uint64_t next_ts = (next_packet_hdr.ts.tv_sec * 1e9 + 
       next_packet_hdr.ts.tv_usec * 1000) - first_packet_ns + start_ns;
 
