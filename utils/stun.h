@@ -27,7 +27,7 @@ namespace ntf {
     struct[[gnu::packed]] StunAttribute {
       be16_t type; // Attribute type
       be16_t length; // Attribute length
-      uint8_t * payload; // Attribute payload
+      char payload_[]; // Attribute payload
     };
 
     static_assert(sizeof(Stun) == 20, "struct Stun is incorrect");
