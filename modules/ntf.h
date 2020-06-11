@@ -32,6 +32,7 @@
 #define BESS_MODULES_NTF_H_
 
 #include <map>
+#include <optional>
 
 #include "module.h"
 #include "pb/module_msg.pb.h"
@@ -76,7 +77,7 @@ struct NtfFlowEntry {
 
 
 
-struct NetworkToken {
+struct NetworkTokenHeader {
 #if __BYTE_ORDER == __LITTLE_ENDIAN  
   uint8_t reflect_type: 4;
   uint32_t app_id : 28;
@@ -87,8 +88,15 @@ struct NetworkToken {
 #error __BYTE_ORDER must be defined.
 #endif 
 
-  uint8_t * ciphertext;
+  char payload[];
 };
+
+struct NetworkToken {
+  uint8_t reflect_type;
+  uint32_t app_id;
+  std::string payload;
+};
+
 
 struct FlowId {
   uint32_t src_addr;
@@ -191,7 +199,7 @@ class NTF final : public Module {
    * 
    * Returns pointer to the network token, or nullptr if no token found.
    */ 
-  NetworkToken * ExtractNetworkTokenFromPacket(bess::Packet *pkt);
+  std::optional<NetworkToken> ExtractNetworkTokenFromPacket(bess::Packet *pkt);
 
   // Get  a flow id (5-tuple) from a packet. 
   FlowId GetFlowId(bess::Packet *pkt);

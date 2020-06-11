@@ -7,6 +7,7 @@
 #include "../utils/ether.h"
 #include "../utils/udp.h"
 #include "../utils/stun.h"
+#include "../utils/nte.h"
 
 const Commands NTF::cmds = {
     {"table_create", "NtfTableCreateArg",MODULE_CMD_FUNC(&NTF::CommandTableCreate), Command::THREAD_UNSAFE},
@@ -176,7 +177,7 @@ FlowId NTF::GetReverseFlowId(FlowId flow_id) {
 /** Extracts a token from a packet.
  * It currently looks for tokens only at UDP STUN packets.
  */
-NetworkToken * NTF::ExtractNetworkTokenFromPacket(bess::Packet *pkt) {
+std::optional<NetworkToken> NTF::ExtractNetworkTokenFromPacket(bess::Packet *pkt) {
   using bess::utils::Ipv4;
   using bess::utils::Udp;
   using ntf::utils::Stun;
@@ -187,62 +188,77 @@ NetworkToken * NTF::ExtractNetworkTokenFromPacket(bess::Packet *pkt) {
   // Ensure this is a UDP packet.
   Ipv4 *ip = pkt->head_data<Ipv4 *>();
   size_t ip_bytes = (ip->header_length) << 2;
+
   if (ip->protocol != IpProto::kUdp)
-    return nullptr;
+    return {};
 
   // Ensure UDP packet has payload.
   Udp *udp = reinterpret_cast<Udp *>(reinterpret_cast<uint8_t *>(ip) + ip_bytes);
   // For this to be a STUN message with an attribute, it needs to be > 28 bytes
   // 8 bytes for UDP header and 20 bytes for STUN message, and more for attribute.
-  // size_t udp_length = size_t(udp->length);
   if (udp->length <= be16_t(sizeof(Udp) + sizeof(Stun))) 
-    return nullptr;
+    return {};
 
   // Try to interpret this as a STUN message. Is it a valid
   // STUN message length?
   // TODO(@yiannis): check that message type is also valid.
   Stun *stun = reinterpret_cast<Stun *>(udp + 1);
-  if (stun->message_length != udp->length - be16_t(sizeof(Udp)))
-    return nullptr;
+  if (stun->message_length != udp->length - be16_t(sizeof(Udp)+sizeof(Stun)))
+    return {};
 
-  size_t remaining_bytes = stun->message_length.value() - sizeof(Stun);
+  size_t remaining_bytes = stun->message_length.value();
 
   uint8_t * next_attribute = reinterpret_cast<uint8_t*> (stun + 1);
   
   while(1) {
     StunAttribute * attribute = reinterpret_cast<StunAttribute *>(next_attribute);
     if (attribute->type == be16_t(AttributeTypes::kNetworkToken)) {
-      return reinterpret_cast<NetworkToken *>(attribute->payload); // attribute->length);
+      NetworkToken token;
+      NetworkTokenHeader * token_header = reinterpret_cast<NetworkTokenHeader *>(attribute->payload_);
+      token.app_id = token_header->app_id;
+      token.reflect_type = token_header->reflect_type;
+      token.payload = std::string(token_header->payload,attribute->length.value());
+      return { token };
     }
 
     // STUN attributes are 32-bit aligned, but length reflects number of bytes
     // prior to padding. Round-up length appropriately to find the next attribute.
-    uint16_t padded_length = ceil(attribute->length.value()/4)*4;
-    remaining_bytes -= padded_length + 4; // type + length + padded payload
-
-    if (remaining_bytes == 0) 
-      return nullptr;
-
+    uint16_t padded_length = ceil(attribute->length.value()/(double)4)*4 + 4;
+    // if attribute length is < 4 or larger than the remaining bytes for this packet, 
+    // the packet is not STUN, or it is malformed, or we screwed parsing. Move on.
+    // If remaining bytes == padded_length then we finished parsing this packet.
+    if (padded_length < 4 || padded_length >= remaining_bytes) {
+      return {};
+    }
+    remaining_bytes -= padded_length; // type + length + padded payload
     next_attribute += padded_length;
   }
 };
 
 void NTF::CheckPacketForNetworkToken(Context *ctx, bess::Packet *pkt) {
-  NetworkToken * token;
+  std::optional<NetworkToken> token;
   FlowId flow_id;
   FlowId reverse_flow_id;
   be32_t app_id;
-  // UserCentricNetworkTokenEntry token_entry;
 
   token = ExtractNetworkTokenFromPacket(pkt);
-  // For now treat all tokens as valid. 
-  if (token != nullptr) {
+  if(token) {
+
     app_id = be32_t(token->app_id);
+    LOG(WARNING) << "Found a token with app-id " << app_id;
     auto *hash_item = tokenMap_.Find(app_id);
     if(!hash_item)
       return;
 
+    LOG(WARNING) << "Found entry";
+    
     NtfFlowEntry new_ntf_flow;
+    json_t * _token = nte_decrypt(token->payload.c_str(), hash_item->second.encryption_key.c_str());
+    if (!_token) {
+      LOG(WARNING) << "NTE Decrypt did not find a valid token";
+      return;
+    }
+    LOG(WARNING) << "Decrypted Token" << (char*) json_dumps(_token, 0);
     // decrypt(ciphertext)
     // verify that alg == direct
     // verify src_ip == bip || dst_ip == bip

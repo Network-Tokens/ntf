@@ -9,6 +9,11 @@ p_down::PcapSource(
 ntf_up::NTF()
 ntf_down::NTF()
 
+ntf_up.table_create(dpid=1, max_entries=5)
+ntf_up.entry_create(dpid=1,entry_id=1,dscp=1,token={'app_id':0x100001,'encryption_key':'{"alg":"A128CBC-HS256","k":"EiNa4MPVcxvlyga4ot-qdAiuGB9RcycyrP3WaDb2qU4","key_ops":["encrypt","decrypt"],"kty":"oct"}'})
+
+ether_encap_up::EtherEncap()
+
 encap_up::GenericEncap(fields=[
   {'size': 6, 'value': {'value_int': 0x020000000001}},
   {'size': 6, 'value': {'value_int': 0x0619deadbeef}},
@@ -25,7 +30,14 @@ s_up::Sink()
 s_down::Sink()
 
 p_up -> ntf_up -> encap_up -> s_up
+
 p_down -> ntf_down -> encap_down -> s_down
 
-open('/tmp/test.pcap','w').close()
-bess.tcpdump_gate(True, 'test', "encap_up", gate=0, direction="out", fifo="/tmp/test.pcap")
+open('/tmp/uplink.pcap','w').close()
+open('/tmp/uplink_s.pcap','w').close()
+open('/tmp/downlink.pcap','w').close()
+open('/tmp/downlink_s.pcap','w').close()
+bess.tcpdump_gate(True, 'test', "encap_up", gate=0, direction="out", fifo="/tmp/uplink.pcap")
+bess.tcpdump_gate(True, 'test', "encap_down", gate=0, direction="out", fifo="/tmp/downlink.pcap")
+bess.tcpdump_gate(True, 'test', "p_up", gate=0, direction="out", fifo="/tmp/uplink_s.pcap")
+bess.tcpdump_gate(True, 'test', "p_down", gate=0, direction="out", fifo="/tmp/downlink_s.pcap")
