@@ -3,11 +3,11 @@
 #include <glog/logging.h>
 #include <math.h>
 
-
 #include "utils/ether.h"
 #include "utils/ip.h"
 #include "utils/stun.h"
 #include "utils/udp.h"
+#include "utils/nte.h"
 #include "utils/nte.h"
 
 const Commands NTF::cmds = {
@@ -145,8 +145,6 @@ NTF::CommandEntryDelete(const ntf::pb::NtfEntryDeleteArg &arg) {
     return CommandFailure(-1, "cannot find token with this app_id");
   }
 
-
-  
   tokenMap_.Remove(app_id);
   UpdateAuthoritativeDscpMarkings();
   return CommandSuccess();
@@ -214,7 +212,7 @@ std::optional<NetworkToken> NTF::ExtractNetworkTokenFromPacket(bess::Packet *pkt
     if (attribute->type == be16_t(AttributeTypes::kNetworkToken)) {
       NetworkToken token;
       NetworkTokenHeader * token_header = reinterpret_cast<NetworkTokenHeader *>(attribute->payload_);
-      LOG(WARNING) << "STUN Attribute Length " << attribute->length.value();
+
       token.app_id = token_header->header.value() & 0x0FFFFFFF;
       token.reflect_type = (token_header->header.value() & 0xF0000000) >> 28;
       token.payload = std::string(token_header->payload,attribute->length.value());
@@ -236,37 +234,56 @@ std::optional<NetworkToken> NTF::ExtractNetworkTokenFromPacket(bess::Packet *pkt
 };
 
 void NTF::CheckPacketForNetworkToken(Context *ctx, bess::Packet *pkt) {
+  using bess::utils::Ipv4;
   std::optional<NetworkToken> token;
   FlowId flow_id;
   FlowId reverse_flow_id;
 
   token = ExtractNetworkTokenFromPacket(pkt);
   if(token) {
-    LOG(WARNING) << "Found a token with app-id " << std::hex << token->app_id << std::dec;
+    DLOG(WARNING) << "Found a token with app-id " << std::hex << token->app_id << std::dec;
     auto *hash_item = tokenMap_.Find(token->app_id);
+
     if(!hash_item)
       return;
 
-    LOG(WARNING) << "Found entry";
-    
     NtfFlowEntry new_ntf_flow;
     json_t * _token = nte_decrypt(token->payload.c_str(), hash_item->second.encryption_key.c_str());
     if (!_token) {
       LOG(WARNING) << "NTE Decrypt did not find a valid token";
       return;
     }
-    LOG(WARNING) << "Decrypted Token" << (char*) json_dumps(_token, 0);
-    // decrypt(ciphertext)
-    // verify that alg == direct
-    // verify src_ip == bip || dst_ip == bip
-    // verify token is not expired
-    // if everything is OK install state for both flows.
+    
+    uint64_t exp_ns = json_integer_value(json_object_get(_token, "exp"))*1e9;
+    std::string bound_ip = json_string_value(json_object_get(_token,"bip"));
+    be32_t bound_address;
+    if (exp_ns < ctx->current_ns) {
+      LOG(WARNING) << "Detected token is expired --- ignoring...";
+      return;
+    }
+    if (!ParseIpv4Address(bound_ip, &bound_address)) {
+      LOG(WARNING) << "Detected token does not have a valid bound IP address --- ignoring...";
+      return;
+    }
+    // We have the expiration time and bound ip for this token. Now we need to check
+    // if the bound ip matches ip source or destination.
+    Ipv4 *ip = pkt->head_data<Ipv4 *>();
+    if ((bound_address != ip->src) && (bound_address != ip->dst)) {
+      LOG(WARNING) << "Detected token is bound to an IP other than source and destination (BIP:" <<
+	ToIpv4Address(bound_address) << " SRCIP:" << ToIpv4Address(ip->src) << " DSTIP:" << ToIpv4Address(ip->dst);
+      return;
+    }
+
+    // if we made it that far, this is a valid token and we should take action.
     new_ntf_flow.last_refresh = ctx->current_ns;
     new_ntf_flow.dscp = hash_item->second.dscp;
     flow_id = GetFlowId(pkt);
     reverse_flow_id = GetReverseFlowId(flow_id);
     flowMap_.Insert(flow_id, new_ntf_flow);
     flowMap_.Insert(reverse_flow_id, new_ntf_flow);
+
+    LOG(WARNING) << "Verified token with app-id " << std::hex << token->app_id << " --- marking packets with DSCP " << (uint16_t) new_ntf_flow.dscp << std::dec;
+    
   }
 };
   

@@ -1,0 +1,22 @@
+import scapy.all as scapy
+import os
+
+pkt_size = int($BESS_PKT_SIZE!'60')
+assert(60 <= pkt_size <= 1522)
+
+ip = scapy.IP(src='10.0.0.1', dst='10.0.0.2', tos=1)   # dst IP is overwritten
+tcp = scapy.TCP(sport=10001, dport=10002)
+payload = ('hello' + '0123456789' * 200)[:pkt_size-len(ip/tcp)]
+pkt = ip/tcp/payload
+pkt_data = bytes(pkt)
+
+ether_encap_up::EtherEncap()
+s_up::Sink()
+rewrite::Rewrite(templates=[pkt_data])
+
+Source()->rewrite->SetMetadata(attrs=[{'name': 'ether_src', 'size': 6, 'value_bin': '\x02\x01\x02\x03\x04\x05'},{'name': 'ether_dst', 'size': 6, 'value_bin': '\x02\x0a\x0b\x0c\x0d\x0e'}, {'name': 'ether_type', 'size':2, 'value_bin':'\x08\x00'}]) -> ether_encap_up -> s_up
+
+open('/tmp/l2.pcap','w').close()
+open('/tmp/l3.pcap','w').close()
+bess.tcpdump_gate(True, 'test', "ether_encap_up", gate=0, direction="out", fifo="/tmp/l2.pcap")
+bess.tcpdump_gate(True, 'test', "rewrite", gate=0, direction="out", fifo="/tmp/l3.pcap")

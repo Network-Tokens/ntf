@@ -5,8 +5,9 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-#include <jose/b64.h>
-#include <jose/jwe.h>
+#include <cjose/jwe.h>
+#include <cjose/jwk.h>
+#include <jansson.h>
 #ifdef __cplusplus
 }
 #endif
