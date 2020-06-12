@@ -75,19 +75,8 @@ struct NtfFlowEntry {
   uint8_t dscp;
 };
 
-
-
 struct NetworkTokenHeader {
-#if __BYTE_ORDER == __LITTLE_ENDIAN  
-  uint8_t reflect_type: 4;
-  uint32_t app_id : 28;
-#elif __BYTE_ORDER == __BIG_ENDIAN
-  uint32_t app_id : 28;
-  uint8_t reflect_type : 4;
-#else
-#error __BYTE_ORDER must be defined.
-#endif 
-
+  be32_t header;
   char payload[];
 };
 
@@ -96,7 +85,6 @@ struct NetworkToken {
   uint32_t app_id;
   std::string payload;
 };
-
 
 struct FlowId {
   uint32_t src_addr;
@@ -141,7 +129,7 @@ struct Flow {
 };
 
 struct UserCentricNetworkTokenEntry {
-  be32_t app_id;
+  uint32_t app_id;
   std::string encryption_key;
   std::list<uint64_t> blacklist;
   uint32_t id;
@@ -180,7 +168,7 @@ class NTF final : public Module {
 
  private:
   using FlowTable = bess::utils::CuckooMap<FlowId, NtfFlowEntry, Flow::Hash, Flow::EqualTo>;
-  using TokenTable = bess::utils::CuckooMap<be32_t, UserCentricNetworkTokenEntry>;
+  using TokenTable = bess::utils::CuckooMap<uint32_t, UserCentricNetworkTokenEntry>;
 
   
   // 5 minutes for entry expiration
