@@ -8,15 +8,9 @@ extern "C" {
 
 #define MAXBUFLEN 1000000
 
-//char compact_jwe[] = "eyJhbGciOiJkaXIiLCJlbmMiOiJBMTI4R0NNIn0..Qik6JKV-S6AhdIGn.NlASAlW4WjPhoDUCOXYV.sPLq8EGbSgnwY-w6urfqfg";
-
-char compact_jwe[] = "eyJhbGciOiJkaXIiLCJlbmMiOiJBMTI4Q0JDLUhTMjU2In0..LSqqwhy-nHKrLr93KEpAwA.-V1w4RrGpI_brvHaFCXvqsuen9XCzVdm9HMzf4DuVhyxL2ZcpRPxFtT8hUZUtIrNqu17Iig3nK-jDtBHFodDxw.ictpX3SL77GSDHEWaa_fog";
-
-char full_jwe[] = "{\"ciphertext\":\"-V1w4RrGpI_brvHaFCXvqsuen9XCzVdm9HMzf4DuVhyxL2ZcpRPxFtT8hUZUtIrNqu17Iig3nK-jDtBHFodDxw\",\"iv\":\"LSqqwhy-nHKrLr93KEpAwA\",\"protected\":\"eyJhbGciOiJkaXIiLCJlbmMiOiJBMTI4Q0JDLUhTMjU2In0\",\"tag\":\"ictpX3SL77GSDHEWaa_fog\"}";
-
-
-char key[] = "{\"alg\":\"A128CBC-HS256\",\"k\":\"EiNa4MPVcxvlyga4ot-qdAiuGB9RcycyrP3WaDb2qU4\",\"key_ops\":[\"encrypt\",\"decrypt\"],\"kty\":\"oct\"}";
-
+char compact_jwe[] = "eyJhbGciOiJkaXIiLCJlbmMiOiJBMTI4Q0JDLUhTMjU2In0..1K9eul7zPanY1uUzuymV-w.9r6WvC38pm7l0LbqFd4JZv3lhHzkWEKYlmabHCAVt-QYCu_g0LK8XZ0EQPCseaXOP3HkHUdD2oYgZ5UHBAeBIw.CKV7vctjDHfPQlKV9tnyQA";
+char key[] = "{\"alg\":\"A128CBC-HS256\",\"k\":\"Qr_XwDGctna3SlR88rEJYt6Zm100SASYeJWSJihDnsA\",\"key_ops\":[\"encrypt\",\"decrypt\"],\"kty\":\"oct\"}";
+  
 typedef struct {
   const char * name;
 } jwe_field_t;
@@ -77,14 +71,14 @@ json_t * nte_decrypt(const char * token_buf, const char * key_buf) {
   LOG(WARNING) << "KEY:" <<  key_buf;
   LOG(WARNING) << "TOKEN:" << token_buf;
   
-  jwk = json_loads(key_buf, 0, &j_error);
+  jwk = json_loads(key, 0, &j_error);
   
   if(!jwk) {
     LOG(WARNING) << "Failed to load JWK " << j_error.text;
     return NULL;
   }
   
-  jwe = parse_compact(token_buf);
+  jwe = parse_compact(compact_jwe);
 
   if(!jwe) {
     LOG(WARNING) << "Failed to load JWE " << j_error.text;
@@ -93,8 +87,8 @@ json_t * nte_decrypt(const char * token_buf, const char * key_buf) {
 
   LOG(WARNING) << "Key:" << json_dumps(jwk,0);
   LOG(WARNING) << "JWE:" << json_dumps(jwe,0); 
-  LOG(WARNING) << "Key:" << json_string_value(json_object_get(jwk, "k"));
-  LOG(WARNING) << "CipherText:" << json_string_value(json_object_get(jwe, "ciphertext"));
+  LOG(WARNING) << "Key:" << json_string_value(json_object_get(jwk, "k")) << "len:" << strlen(json_string_value(json_object_get(jwk,"k")));
+  LOG(WARNING) << "CipherText:" << json_string_value(json_object_get(jwe, "ciphertext")) << "len:" << strlen(json_string_value(json_object_get(jwe,"ciphertext")));
   
   size_t out_size;
   char * output = (char*) jose_jwe_dec(NULL, jwe, NULL, jwk, &out_size);
