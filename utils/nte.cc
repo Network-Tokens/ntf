@@ -93,6 +93,8 @@ json_t * nte_decrypt(const char * token_buf, const char * key_buf) {
 
   LOG(WARNING) << "Key:" << json_dumps(jwk,0);
   LOG(WARNING) << "JWE:" << json_dumps(jwe,0); 
+  LOG(WARNING) << "Key:" << json_string_value(json_object_get(jwk, "k"));
+  LOG(WARNING) << "CipherText:" << json_string_value(json_object_get(jwe, "ciphertext"));
   
   size_t out_size;
   char * output = (char*) jose_jwe_dec(NULL, jwe, NULL, jwk, &out_size);

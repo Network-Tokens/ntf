@@ -45,7 +45,7 @@ NTF::CommandTableCreate(const ntf::pb::NtfTableCreateArg &arg) {
   dpid = arg.dpid();
   max_token_entries = arg.max_entries();
   return CommandSuccess();
-  };
+};
 
 CommandResponse
 NTF::CommandTableDelete(const ntf::pb::NtfTableDeleteArg &arg) {
@@ -66,13 +66,13 @@ NTF::CommandEntryCreate(const ntf::pb::NtfEntryCreateArg &arg) {
   LOG(WARNING) << __FUNCTION__;
 
   
-  be32_t app_id;
+  uint32_t app_id;
   
   if (dpid == 0 || arg.dpid() != dpid) {
     return CommandFailure(-1, "invalid DPID value");
   }
 
-  app_id = be32_t(arg.token().app_id());
+  app_id = arg.token().app_id();
   
   if (tokenMap_.Find(app_id)) {
     return CommandFailure(-1, "token with app_id already exists --- use entry_modify instead");
@@ -102,18 +102,16 @@ CommandResponse
 NTF::CommandEntryModify(const ntf::pb::NtfEntryModifyArg &arg) {
   LOG(WARNING) << __FUNCTION__;  
 
-  be32_t app_id;
+  uint32_t app_id;
   
   if (dpid == 0 || arg.dpid() != dpid) {
     return CommandFailure(-1, "invalid DPID value");
   }
 
-  app_id = be32_t(arg.token().app_id());
+  app_id = arg.token().app_id();
   if (!tokenMap_.Find(app_id)) {
     return CommandFailure(-1, "token with app_id doesn't exist --- use entry_create instead");
   }
-
-
   
   UserCentricNetworkTokenEntry entry;
   entry.app_id = app_id;
@@ -135,13 +133,13 @@ CommandResponse
 NTF::CommandEntryDelete(const ntf::pb::NtfEntryDeleteArg &arg) {
   LOG(WARNING) << __FUNCTION__;
   
-  be32_t app_id;
+  uint32_t app_id;
   
   if (dpid == 0 || arg.dpid() != dpid) {
     return CommandFailure(-1, "invalid DPID value");
   }
 
-  app_id = be32_t(arg.app_id());
+  app_id = arg.app_id();
   
   if (!tokenMap_.Find(app_id)) {
     return CommandFailure(-1, "cannot find token with this app_id");
@@ -216,8 +214,9 @@ std::optional<NetworkToken> NTF::ExtractNetworkTokenFromPacket(bess::Packet *pkt
     if (attribute->type == be16_t(AttributeTypes::kNetworkToken)) {
       NetworkToken token;
       NetworkTokenHeader * token_header = reinterpret_cast<NetworkTokenHeader *>(attribute->payload_);
-      token.app_id = token_header->app_id;
-      token.reflect_type = token_header->reflect_type;
+      LOG(WARNING) << "STUN Attribute Length " << attribute->length.value();
+      token.app_id = token_header->header.value() & 0x0FFFFFFF;
+      token.reflect_type = (token_header->header.value() & 0xF0000000) >> 28;
       token.payload = std::string(token_header->payload,attribute->length.value());
       return { token };
     }
@@ -240,14 +239,11 @@ void NTF::CheckPacketForNetworkToken(Context *ctx, bess::Packet *pkt) {
   std::optional<NetworkToken> token;
   FlowId flow_id;
   FlowId reverse_flow_id;
-  be32_t app_id;
 
   token = ExtractNetworkTokenFromPacket(pkt);
   if(token) {
-
-    app_id = be32_t(token->app_id);
-    LOG(WARNING) << "Found a token with app-id " << app_id;
-    auto *hash_item = tokenMap_.Find(app_id);
+    LOG(WARNING) << "Found a token with app-id " << std::hex << token->app_id << std::dec;
+    auto *hash_item = tokenMap_.Find(token->app_id);
     if(!hash_item)
       return;
 
@@ -302,7 +298,7 @@ void NTF::SetDscpMarking(bess::Packet *pkt, uint8_t dscp) {
 }
 
 void NTF::UpdateAuthoritativeDscpMarkings() {
-  using TokenTable = bess::utils::CuckooMap<be32_t, UserCentricNetworkTokenEntry>;
+  using TokenTable = bess::utils::CuckooMap<uint32_t, UserCentricNetworkTokenEntry>;
   // go over all entries and add all dscp actions to the authoritative list.
   for (TokenTable::iterator it=tokenMap_.begin(); it!=tokenMap_.end(); ++it) {
     authoritative_dscp_markings.insert(it->second.dscp);
