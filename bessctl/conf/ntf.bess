@@ -1,3 +1,8 @@
+/*
+ * License : Apache-2.0
+ * Copyright(c) 2020 Selfie Networks, Inc
+ */
+
 src_ip = ["172.31.0.3"]
 
 pcap_file = "/opt/ntf/pcap-samples/network-token-sample.pcap"

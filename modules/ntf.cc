@@ -1,3 +1,8 @@
+/*
+ * License : Apache-2.0
+ * Copyright(c) 2020 Selfie Networks, Inc
+ */
+
 #include "ntf.h"
 #include <algorithm>
 #include <glog/logging.h>

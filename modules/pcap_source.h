@@ -1,3 +1,8 @@
+/*
+ * License : Apache-2.0
+ * Copyright(c) 2020 Selfie Networks, Inc
+ */
+
 #ifndef BESS_MODULES_PCAP_SOURCE_H_
 #define BESS_MODULES_PCAP_SOURCE_H_
 
