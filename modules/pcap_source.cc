@@ -5,11 +5,11 @@
 #include <math.h>
 #include <netinet/in.h>
 
-#include "../utils/ether.h"
-#include "../utils/ip.h"
-#include "../utils/stun.h"
-#include "../utils/time.h"
-#include "../utils/udp.h"
+#include "utils/ether.h"
+#include "utils/ip.h"
+#include "utils/stun.h"
+#include "utils/time.h"
+#include "utils/udp.h"
 
 using namespace bess::utils;
 using ntf::pb::PcapSourceArg;
