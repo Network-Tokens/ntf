@@ -1,36 +1,43 @@
-import scapy.all as scapy
-import os
+src_ip = ["172.31.0.3"]
 
-# 'show module' command shows detailed stats/parameters
+pcap_file = "/opt/ntf/pcap-samples/network-token-sample.pcap"
 
-pkt_size = int($BESS_PKT_SIZE!'60')
-assert(60 <= pkt_size <= 1522)
+p_up::PcapSource(
+  filename=pcap_file, src_ip=src_ip, reverse=False)
 
-eth = scapy.Ether(src='02:1e:67:9f:4d:ae', dst='06:16:3e:1b:72:32')
-ip = scapy.IP(src='10.0.0.1', dst='10.0.0.2', tos=1)   # dst IP is overwritten
-tcp = scapy.TCP(sport=10001, dport=10002)
-payload = ('hello' + '0123456789' * 200)[:pkt_size-len(eth/ip/tcp)]
-pkt = eth/ip/tcp/payload
-pkt_data = bytes(pkt)
+p_down::PcapSource(
+  filename=pcap_file, src_ip=src_ip, reverse=True)
 
-# NOTE: without quick_rampup=1, it takes a while to converge to
-# the desied load level, especially when flow duration is pareto distribution
+ntf_up::NTF()
+ntf_down::NTF()
 
-f::FlowGen(template=pkt_data, pps=2, flow_rate = 1, flow_duration = 10.0, \
-        arrival='exponential', duration='pareto', quick_rampup=True)
-decap1::GenericDecap(bytes=14)
-decap2::GenericDecap(bytes=14)
-s::Sink()
-ntf::NTF()
+ntf_up.table_create(dpid=1, max_entries=5)
+ntf_up.entry_create(dpid=1,entry_id=1,dscp=1,token={'app_id':0x10001,'encryption_key':'{"alg":"A128CBC-HS256","k":"Qr_XwDGctna3SlR88rEJYt6Zm100SASYeJWSJihDnsA","key_ops":["encrypt","decrypt"],"kty":"oct"}'})
 
-encap1::GenericEncap(fields=[{'size': 6, 'value': {'value_int': 0x020000000001}}, {'size': 6, 'value': {'value_int': 0x0619deadbeef}},{'size': 2, 'value': {'value_int':0x0800}}])
-encap2::GenericEncap(fields=[{'size': 6, 'value': {'value_int': 0x0619deadbeef}}, {'size': 6, 'value': {'value_int':0x020000000001 }},{'size': 2, 'value': {'value_int':0x0800}}])
+encap_up::GenericEncap(fields=[
+  {'size': 6, 'value': {'value_int': 0x020000000001}},
+  {'size': 6, 'value': {'value_int': 0x0619cafebeef}},
+  {'size': 2, 'value': {'value_int': 0x0800}}
+])
 
+encap_down::GenericEncap(fields=[
+  {'size': 6, 'value': {'value_int': 0x0619cafebeef}},
+  {'size': 6, 'value': {'value_int': 0x020000000001}},
+  {'size': 2, 'value': {'value_int': 0x0800}}
+])
 
-f->decap1->0:ntf:1->encap1->MACSwap()->IPSwap()->decap2->encap2->s # ->decap2->1:ntf:0->encap2->s
+s_up::Sink()
+s_down::Sink()
 
-open('/tmp/test1.pcap','w').close()
-open('/tmp/test2.pcap','w').close()
+p_up -> ntf_up -> encap_up -> s_up
 
-bess.tcpdump_gate(True, 'test',"encap1", gate=0, direction="out", fifo="/tmp/test1.pcap")
-# bess.tcpdump_gate(True, 'test',"encap2", gate=0, direction="out", fifo="/tmp/test2.pcap")
+p_down -> ntf_down -> encap_down -> s_down
+
+open('/tmp/uplink.pcap','w').close()
+open('/tmp/uplink_s.pcap','w').close()
+open('/tmp/downlink.pcap','w').close()
+open('/tmp/downlink_s.pcap','w').close()
+bess.tcpdump_gate(True, 'test', "encap_up", gate=0, direction="out", fifo="/tmp/uplink.pcap")
+bess.tcpdump_gate(True, 'test', "encap_down", gate=0, direction="out", fifo="/tmp/downlink.pcap")
+bess.tcpdump_gate(True, 'test', "p_up", gate=0, direction="out", fifo="/tmp/uplink_s.pcap")
+bess.tcpdump_gate(True, 'test', "p_down", gate=0, direction="out", fifo="/tmp/downlink_s.pcap")

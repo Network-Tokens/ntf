@@ -32,6 +32,7 @@
 #define BESS_MODULES_NTF_H_
 
 #include <map>
+#include <optional>
 
 #include "module.h"
 #include "pb/module_msg.pb.h"
@@ -74,20 +75,15 @@ struct NtfFlowEntry {
   uint8_t dscp;
 };
 
-
+struct NetworkTokenHeader {
+  be32_t header;
+  char payload[];
+};
 
 struct NetworkToken {
-#if __BYTE_ORDER == __LITTLE_ENDIAN  
-  uint8_t reflect_type: 4;
-  uint32_t app_id : 28;
-#elif __BYTE_ORDER == __BIG_ENDIAN
-  uint32_t app_id : 28;
-  uint8_t reflect_type : 4;
-#else
-#error __BYTE_ORDER must be defined.
-#endif 
-
-  uint8_t * ciphertext;
+  uint8_t reflect_type;
+  uint32_t app_id;
+  std::string payload;
 };
 
 struct FlowId {
@@ -133,7 +129,7 @@ struct Flow {
 };
 
 struct UserCentricNetworkTokenEntry {
-  be32_t app_id;
+  uint32_t app_id;
   std::string encryption_key;
   std::list<uint64_t> blacklist;
   uint32_t id;
@@ -172,7 +168,7 @@ class NTF final : public Module {
 
  private:
   using FlowTable = bess::utils::CuckooMap<FlowId, NtfFlowEntry, Flow::Hash, Flow::EqualTo>;
-  using TokenTable = bess::utils::CuckooMap<be32_t, UserCentricNetworkTokenEntry>;
+  using TokenTable = bess::utils::CuckooMap<uint32_t, UserCentricNetworkTokenEntry>;
 
   
   // 5 minutes for entry expiration
@@ -191,7 +187,7 @@ class NTF final : public Module {
    * 
    * Returns pointer to the network token, or nullptr if no token found.
    */ 
-  NetworkToken * ExtractNetworkTokenFromPacket(bess::Packet *pkt);
+  std::optional<NetworkToken> ExtractNetworkTokenFromPacket(bess::Packet *pkt);
 
   // Get  a flow id (5-tuple) from a packet. 
   FlowId GetFlowId(bess::Packet *pkt);
