@@ -1,3 +1,8 @@
+/*
+ * License : Apache-2.0
+ * Copyright(c) 2020 Selfie Networks, Inc
+ */
+
 #include "pcap_source.h"
 #include <algorithm>
 #include <arpa/inet.h>

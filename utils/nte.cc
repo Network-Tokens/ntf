@@ -1,3 +1,8 @@
+/*
+ * License : Apache-2.0
+ * Copyright(c) 2020 Selfie Networks, Inc
+ */
+
 #include "nte.h"
 #include <glog/logging.h>
 
