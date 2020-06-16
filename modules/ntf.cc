@@ -8,7 +8,6 @@
 #include "utils/stun.h"
 #include "utils/udp.h"
 #include "utils/nte.h"
-#include "utils/nte.h"
 
 const Commands NTF::cmds = {
     {"table_create", "NtfTableCreateArg",MODULE_CMD_FUNC(&NTF::CommandTableCreate), Command::THREAD_UNSAFE},
