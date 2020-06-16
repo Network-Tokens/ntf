@@ -146,8 +146,6 @@ NTF::CommandEntryDelete(const ntf::pb::NtfEntryDeleteArg &arg) {
     return CommandFailure(-1, "cannot find token with this app_id");
   }
 
-
-  
   tokenMap_.Remove(app_id);
   UpdateAuthoritativeDscpMarkings();
   return CommandSuccess();
@@ -215,7 +213,6 @@ std::optional<NetworkToken> NTF::ExtractNetworkTokenFromPacket(bess::Packet *pkt
     if (attribute->type == be16_t(AttributeTypes::kNetworkToken)) {
       NetworkToken token;
       NetworkTokenHeader * token_header = reinterpret_cast<NetworkTokenHeader *>(attribute->payload_);
-      LOG(WARNING) << "STUN Attribute Length " << attribute->length.value();
       token.app_id = token_header->header.value() & 0x0FFFFFFF;
       token.reflect_type = (token_header->header.value() & 0xF0000000) >> 28;
       token.payload = std::string(token_header->payload,attribute->length.value());
@@ -244,7 +241,7 @@ void NTF::CheckPacketForNetworkToken(Context *ctx, bess::Packet *pkt) {
 
   token = ExtractNetworkTokenFromPacket(pkt);
   if(token) {
-    LOG(WARNING) << "Found a token with app-id " << std::hex << token->app_id << std::dec;
+    DLOG(WARNING) << "Found a token with app-id " << std::hex << token->app_id << std::dec;
     auto *hash_item = tokenMap_.Find(token->app_id);
     if(!hash_item)
       return;
@@ -283,6 +280,9 @@ void NTF::CheckPacketForNetworkToken(Context *ctx, bess::Packet *pkt) {
     reverse_flow_id = GetReverseFlowId(flow_id);
     flowMap_.Insert(flow_id, new_ntf_flow);
     flowMap_.Insert(reverse_flow_id, new_ntf_flow);
+
+    LOG(WARNING) << "Verified token with app-id " << std::hex << token->app_id << " --- marking packets with DSCP " << (uint16_t) new_ntf_flow.dscp << std::dec;
+    
   }
 };
   
