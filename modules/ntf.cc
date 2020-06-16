@@ -1,12 +1,12 @@
 #include "ntf.h"
+#include <algorithm>
 #include <glog/logging.h>
 #include <math.h>
-#include <algorithm>
 
-#include "../utils/ip.h"
-#include "../utils/ether.h"
-#include "../utils/udp.h"
-#include "../utils/stun.h"
+#include "utils/ether.h"
+#include "utils/ip.h"
+#include "utils/stun.h"
+#include "utils/udp.h"
 
 const Commands NTF::cmds = {
     {"table_create", "NtfTableCreateArg",MODULE_CMD_FUNC(&NTF::CommandTableCreate), Command::THREAD_UNSAFE},

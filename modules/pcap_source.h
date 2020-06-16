@@ -1,14 +1,13 @@
 #ifndef BESS_MODULES_PCAP_SOURCE_H_
 #define BESS_MODULES_PCAP_SOURCE_H_
 
-#include <map>
-
 #include "module.h"
+#include <map>
+#include <pcap/pcap.h>
 
+#include "pb/pcap_source_msg.pb.h"
 #include "utils/cuckoo_map.h"
 #include "utils/endian.h"
-#include "pb/pcap_source_msg.pb.h"
-#include <pcap/pcap.h>
 
 using bess::utils::be32_t;
 
