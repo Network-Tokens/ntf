@@ -50,24 +50,26 @@ using bess::utils::be32_t;
  * Method of operation:
  * 
  * NTF holds a number of network token entries in tokenTable. Each entry
- * describes a token, and is indexed through a unique app_id. app_id means
- * a network token application. For the purposes of this implementation an app_id
- * identifies a service offered by an operator. A network token entry includes the 
- * key with which tokens are encrypted/decrypted, a blacklist, and the actions to take
- * when a token is detected. 
+ * describes a token, and is indexed through a unique app_id. app_id means a
+ * network token application. For the purposes of this implementation an app_id
+ * identifies a service offered by an operator. A network token entry includes
+ * the key with which tokens are encrypted/decrypted, a blacklist, and the
+ * actions to take when a token is detected. 
  * 
- * The only supported action right now is to mark the packet with a specific DSCP codepoint. 
- * To prevent abuse, NTF assumes authoritative actions with regards to DSCP markings. If deemed responsible 
- * for a specific codepoint, only packets/flows with valid tokens will have this marking. If such marking
+ * The only supported action right now is to mark the packet with a specific
+ * DSCP codepoint.  To prevent abuse, NTF assumes authoritative actions with
+ * regards to DSCP markings. If deemed responsible for a specific codepoint,
+ * only packets/flows with valid tokens will have this marking. If such marking
  * is found in other flows, it will be reset to 0. 
  * 
- * Every packet that enters NTF is checked for network tokens (currently only as STUN attributes). 
- * When a valid token is detected, NTF enforces the respective action and sets the DSCP marking.
- * NTF also (temporarily) stores the 5-tuple of this flow into flow table, so that subsequent packets of
- * this flow are associated with this token.
+ * Every packet that enters NTF is checked for network tokens (currently only
+ * as STUN attributes).  When a valid token is detected, NTF enforces the
+ * respective action and sets the DSCP marking.  NTF also (temporarily) stores
+ * the 5-tuple of this flow into flow table, so that subsequent packets of this
+ * flow are associated with this token.
  * 
- * Packets with no tokens (or with invalid/unverified tokens) pass through the NTF with no changes 
- * (apart from DSCP reseting as discussed earlier). 
+ * Packets with no tokens (or with invalid/unverified tokens) pass through the
+ * NTF with no changes (apart from DSCP reseting as discussed earlier). 
  */
 
 struct NtfFlowEntry {
@@ -120,7 +122,8 @@ struct Flow {
   // to compare two FlowId for equality in a hash table
   struct EqualTo {
     bool operator()(const FlowId &id1, const FlowId &id2) const {
-      bool ips = (id1.src_addr == id2.src_addr) && (id1.dst_addr == id2.dst_addr);
+      bool ips =
+          (id1.src_addr == id2.src_addr) && (id1.dst_addr == id2.dst_addr);
       bool ports =
           (id1.src_tp == id2.src_tp) && (id1.dst_tp == id2.dst_tp);
       return (ips && ports) && (id1.protocol == id2.protocol);
@@ -159,22 +162,19 @@ class NTF final : public Module {
   CommandResponse CommandEntryCreate(const ntf::pb::NtfEntryCreateArg &arg);
   CommandResponse CommandEntryModify(const ntf::pb::NtfEntryModifyArg &arg);
   CommandResponse CommandEntryDelete(const ntf::pb::NtfEntryDeleteArg &arg);
-  
 
   void ProcessBatch(Context *ctx, bess::PacketBatch *batch) override;
 
-  // NTF() : Module(), num_vars_(), vars_() {}
-
-
  private:
-  using FlowTable = bess::utils::CuckooMap<FlowId, NtfFlowEntry, Flow::Hash, Flow::EqualTo>;
-  using TokenTable = bess::utils::CuckooMap<uint32_t, UserCentricNetworkTokenEntry>;
+  using FlowTable = bess::utils::CuckooMap<
+    FlowId, NtfFlowEntry, Flow::Hash, Flow::EqualTo>;
+  using TokenTable = bess::utils::CuckooMap<
+    uint32_t, UserCentricNetworkTokenEntry>;
 
-  
   // 5 minutes for entry expiration
   static const uint64_t kTimeOutNs = 300ull * 1000 * 1000 * 1000;
   std::set<uint8_t> authoritative_dscp_markings;
-  
+
   FlowTable::Entry *CreateNewEntry(const Flow &flow, uint64_t now);
 
   template <Direction dir>
@@ -196,20 +196,22 @@ class NTF final : public Module {
   FlowId GetReverseFlowId(FlowId flow_id);
 
   /**
-   * CheckPacketForNetworkToken performs all token-related functions for a packet.
-   * It uses ExtractNetworkTokenFromPacket to detect token for a packet.
-   * Verifies that this is a valid token and if so, evaluates it. 
-   * It installs the necessary state to apply desired actions (e.g., DSCP marking) for
-   * follow-up packets that belong to the same flow.
+   * CheckPacketForNetworkToken performs all token-related functions for a
+   * packet.  It uses ExtractNetworkTokenFromPacket to detect token for a
+   * packet.  Verifies that this is a valid token and if so, evaluates it.  It
+   * installs the necessary state to apply desired actions (e.g., DSCP marking)
+   * for follow-up packets that belong to the same flow.
    */
   void CheckPacketForNetworkToken(Context *ctx, bess::Packet *pkt);
 
   /**
-   * Resets the token-specific DSCP marking for flows that have not been whitelisted through a token.
+   * Resets the token-specific DSCP marking for flows that have not been
+   * whitelisted through a token.
    */ 
   void ResetDscpMarking(bess::Packet *pkt);
   /**
-   * Sets the token-specific DSCP marking for flows that have been whitelisted through a token.
+   * Sets the token-specific DSCP marking for flows that have been whitelisted
+   * through a token.
    */
   void SetDscpMarking(bess::Packet *pkt, uint8_t dscp);
 

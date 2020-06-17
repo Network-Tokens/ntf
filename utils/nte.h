@@ -6,18 +6,7 @@
 #ifndef NTF_UTILS_NTE_H_
 #define NTF_UTILS_NTE_H_
 
-#include <stdio.h>
-#ifdef __cplusplus
-extern "C" {
-#endif
-#include <cjose/jwe.h>
-#include <cjose/jwk.h>
-#include <jansson.h>
-#ifdef __cplusplus
-}
-#endif
-#include <string.h>
-#include <errno.h>
+#include <cjose/header.h>
 
 #ifdef __cplusplus
 extern "C" {
