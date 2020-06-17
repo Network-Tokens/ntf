@@ -5,8 +5,9 @@
 
 #include "ntf.h"
 #include <algorithm>
+#include <cmath>
 #include <glog/logging.h>
-#include <math.h>
+#include <jansson.h>
 
 #include "utils/ether.h"
 #include "utils/ip.h"
@@ -15,11 +16,11 @@
 #include "utils/nte.h"
 
 const Commands NTF::cmds = {
-    {"table_create", "NtfTableCreateArg",MODULE_CMD_FUNC(&NTF::CommandTableCreate), Command::THREAD_UNSAFE},
-    {"table_delete", "NtfTableDeleteArg",MODULE_CMD_FUNC(&NTF::CommandTableDelete), Command::THREAD_UNSAFE},
-    {"entry_create", "NtfEntryCreateArg",MODULE_CMD_FUNC(&NTF::CommandEntryCreate), Command::THREAD_UNSAFE},
-    {"entry_modify", "NtfEntryModifyArg",MODULE_CMD_FUNC(&NTF::CommandEntryModify), Command::THREAD_UNSAFE},
-    {"entry_delete", "NtfEntryDeleteArg",MODULE_CMD_FUNC(&NTF::CommandEntryDelete), Command::THREAD_UNSAFE},
+    {"table_create", "NtfTableCreateArg", MODULE_CMD_FUNC(&NTF::CommandTableCreate), Command::THREAD_UNSAFE},
+    {"table_delete", "NtfTableDeleteArg", MODULE_CMD_FUNC(&NTF::CommandTableDelete), Command::THREAD_UNSAFE},
+    {"entry_create", "NtfEntryCreateArg", MODULE_CMD_FUNC(&NTF::CommandEntryCreate), Command::THREAD_UNSAFE},
+    {"entry_modify", "NtfEntryModifyArg", MODULE_CMD_FUNC(&NTF::CommandEntryModify), Command::THREAD_UNSAFE},
+    {"entry_delete", "NtfEntryDeleteArg", MODULE_CMD_FUNC(&NTF::CommandEntryDelete), Command::THREAD_UNSAFE},
 };
 
 CommandResponse

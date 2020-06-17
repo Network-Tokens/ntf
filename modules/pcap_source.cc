@@ -6,8 +6,8 @@
 #include "pcap_source.h"
 #include <algorithm>
 #include <arpa/inet.h>
+#include <cmath>
 #include <glog/logging.h>
-#include <math.h>
 #include <netinet/in.h>
 
 #include "utils/ether.h"
