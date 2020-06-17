@@ -1,7 +1,5 @@
-/*
- * License : Apache-2.0
- * Copyright(c) 2020 Selfie Networks, Inc
- */
+# License : Apache-2.0
+# Copyright(c) 2020 Selfie Networks, Inc
 
 src_ip = ["172.31.0.3"]
 
