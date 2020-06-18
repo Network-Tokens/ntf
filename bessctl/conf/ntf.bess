@@ -11,11 +11,10 @@ p_up::PcapSource(
 p_down::PcapSource(
   filename=pcap_file, src_ip=src_ip, reverse=True)
 
-ntf_up::NTF()
-ntf_down::NTF()
+ntf::NTF()
 
-ntf_up.table_create(dpid=1, max_entries=5)
-ntf_up.entry_create(dpid=1,entry_id=1,dscp=1,token={'app_id':0x10001,'encryption_key':'{"alg":"A128CBC-HS256","k":"Qr_XwDGctna3SlR88rEJYt6Zm100SASYeJWSJihDnsA","key_ops":["encrypt","decrypt"],"kty":"oct"}'})
+ntf.table_create(dpid=1, max_entries=5)
+ntf.entry_create(dpid=1,entry_id=1,dscp=1,token={'app_id':0x10001,'encryption_key':'{"alg":"A128CBC-HS256","k":"Qr_XwDGctna3SlR88rEJYt6Zm100SASYeJWSJihDnsA","key_#ops":["encrypt","decrypt"],"kty":"oct"}'})
 
 encap_up::GenericEncap(fields=[
   {'size': 6, 'value': {'value_int': 0x020000000001}},
@@ -32,9 +31,9 @@ encap_down::GenericEncap(fields=[
 s_up::Sink()
 s_down::Sink()
 
-p_up -> ntf_up -> encap_up -> s_up
+p_up -> 0:ntf:1 -> encap_up -> s_up
 
-p_down -> ntf_down -> encap_down -> s_down
+p_down -> 1:ntf:0 -> encap_down -> s_down
 
 open('/tmp/uplink.pcap','w').close()
 open('/tmp/uplink_s.pcap','w').close()
