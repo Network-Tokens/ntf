@@ -386,12 +386,6 @@ void NTF::ProcessBatch(Context *ctx, bess::PacketBatch *batch) {
   } else {
     DoProcessBatch<kReverse>(ctx, batch);
   }
-
-  int cnt = batch->cnt();
-
-  DLOG(WARNING) << "Received batch with " << cnt << " packets";
-  
-  RunNextModule(ctx, batch);
 };
 
 ADD_MODULE(NTF, "ntf", "interprets network tokens and enforces appropriate action")
