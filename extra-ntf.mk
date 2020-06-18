@@ -1,0 +1,1 @@
+LIBS += -lcjose -ljansson -lcrypto
