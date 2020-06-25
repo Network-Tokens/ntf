@@ -1,6 +1,6 @@
-## NTF Bess plugin
+## NTF
 
-Network Token Function (NTF) is a datapath library that implements network token processing, as defined in the [relevant I-D](https://github.com/Network-Tokens/network-tokens-rfc/blob/master/draft-yiakoumis-network-tokens-00.txt).
+Network Token Function (NTF) is a network function that implements network token processing, as defined in the [relevant I-D](https://github.com/Network-Tokens/network-tokens-rfc/blob/master/draft-yiakoumis-network-tokens-00.txt).
 
 ### Features
 
