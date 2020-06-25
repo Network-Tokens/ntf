@@ -9,6 +9,10 @@ Network Token Function (NTF) is a network function that implements network token
 * Supported token types
   - User-centric tokens (symmetric encryption, expiration time, bound IPs)
 
+### Integrations
+
+NTF is currently integrated with [OMEC - Open Mobile Evolved Core](https://github.com/omec-project/upf-epc)
+
 ### Usage
 
 NTF is implemented as a [BESS plugin](https://github.com/NetSys/bess).
@@ -26,3 +30,4 @@ Once loaded, it will send traffic from the sample pcap file under pcap-samples t
 
 The NTF will detect the token, and apply defined actions (currently setting a DSCP marking). 
 The output of the NTF will be available at `/tmp/uplink.pcap`
+
