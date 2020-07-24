@@ -31,15 +31,15 @@ encap_down::GenericEncap(fields=[
 s_up::Sink()
 s_down::Sink()
 
-p_up -> 0:ntf:1 -> encap_up -> s_up
+p_up -> ntf -> encap_up -> s_up
 
-p_down -> 1:ntf:0 -> encap_down -> s_down
+#p_down -> 1:ntf:0 -> encap_down -> s_down
 
 open('/tmp/uplink.pcap','w').close()
 open('/tmp/uplink_s.pcap','w').close()
 open('/tmp/downlink.pcap','w').close()
 open('/tmp/downlink_s.pcap','w').close()
 bess.tcpdump_gate(True, 'test', "encap_up", gate=0, direction="out", fifo="/tmp/uplink.pcap")
-bess.tcpdump_gate(True, 'test', "encap_down", gate=0, direction="out", fifo="/tmp/downlink.pcap")
+#bess.tcpdump_gate(True, 'test', "encap_down", gate=0, direction="out", fifo="/tmp/downlink.pcap")
 bess.tcpdump_gate(True, 'test', "p_up", gate=0, direction="out", fifo="/tmp/uplink_s.pcap")
-bess.tcpdump_gate(True, 'test', "p_down", gate=0, direction="out", fifo="/tmp/downlink_s.pcap")
+#bess.tcpdump_gate(True, 'test', "p_down", gate=0, direction="out", fifo="/tmp/downlink_s.pcap")
