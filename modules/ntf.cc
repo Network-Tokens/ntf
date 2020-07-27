@@ -9,7 +9,6 @@
 #include <glog/logging.h>
 #include <jansson.h>
 
-#include "utils/checksum.h"
 #include "utils/ether.h"
 #include "utils/format.h"
 #include "utils/ip.h"
@@ -171,8 +170,8 @@ FlowId NTF::GetFlowId(bess::Packet *pkt) {
 
   Ipv4 *ip = pkt->head_data<Ipv4 *>(sizeof(Ethernet));
   size_t ip_bytes = (ip->header_length) << 2;
-  Udp *udp = reinterpret_cast<Udp *>(reinterpret_cast<uint8_t *>(ip) + ip_bytes);
 
+  Udp *udp = pkt->head_data<Udp *>(sizeof(Ethernet) + ip_bytes);
   FlowId id = {ip->src.value(), ip->dst.value(), ip->protocol,
                udp->src_port.value(), udp->dst_port.value()};
 
@@ -208,7 +207,6 @@ std::optional<NetworkToken> NTF::ExtractNetworkTokenFromPacket(bess::Packet *pkt
   offset += (ip->header_length << 2);
 
   // Ensure UDP packet has payload.
-  // Udp *udp = reinterpret_cast<Udp *>(reinterpret_cast<uint8_t *>(ip) + ip_bytes);
   Udp *udp = pkt->head_data<Udp *>(offset);
 
   // For this to be a STUN message with an attribute, it needs to be > 28 bytes
@@ -329,17 +327,12 @@ void NTF::ResetDscpMarking(bess::Packet *pkt) {
   // otherwise leave as is.
   if (authoritative_dscp_markings.count(ip->type_of_service) > 0) {
     ip->type_of_service = 0;
-    ip->checksum = bess::utils::CalculateIpv4Checksum(*ip);
   }
-
-  return;
 }
 
 void NTF::SetDscpMarking(bess::Packet *pkt, uint8_t dscp) {
   Ipv4 *ip = pkt->head_data<Ipv4 *>(sizeof(Ethernet));
   ip->type_of_service = dscp;
-  ip->checksum = bess::utils::CalculateIpv4Checksum(*ip);
-  return;
 }
 
 void NTF::UpdateAuthoritativeDscpMarkings() {
@@ -349,8 +342,6 @@ void NTF::UpdateAuthoritativeDscpMarkings() {
     authoritative_dscp_markings.insert(it->second.dscp);
   }
 }
-
-
 
 void NTF::ProcessBatch(Context *ctx, bess::PacketBatch *batch) {
   int cnt = batch->cnt();
@@ -402,11 +393,9 @@ void NTF::ProcessBatch(Context *ctx, bess::PacketBatch *batch) {
   RunNextModule(ctx, batch);
 };
 
-
 std::string NTF::GetDesc() const {
   return bess::utils::Format("%zu tokens, %zu active flows",
         tokenMap_.Count(), flowMap_.Count());
 }
-
 
 ADD_MODULE(NTF, "ntf", "interprets network tokens and enforces appropriate action")

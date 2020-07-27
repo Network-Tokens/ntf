@@ -2,32 +2,25 @@
 # Copyright(c) 2020 Selfie Networks, Inc
 
 src_ip = ["172.31.0.3"]
-
 pcap_file = "/opt/ntf/pcap-samples/network-token-sample.pcap"
 
-p_up::PcapSource(
-  filename=pcap_file, src_ip=src_ip, reverse=False)
-
-p_down::PcapSource(
-  filename=pcap_file, src_ip=src_ip, reverse=True)
-
-merge::Merge()
-
 ntf::NTF()
-
 ntf.table_create(dpid=1, max_entries=5)
 ntf.entry_create(dpid=1,entry_id=1,dscp=1,token={'app_id':0x10001,'encryption_key':'{"alg":"A128CBC-HS256","k":"Qr_XwDGctna3SlR88rEJYt6Zm100SASYeJWSJihDnsA","kty":"oct"}'})
 
-ether_encap::GenericEncap(fields=[
-  {'size': 6, 'value': {'value_int': 0x000000000000}},
-  {'size': 6, 'value': {'value_int': 0x000000000000}},
-  {'size': 2, 'value': {'value_int': 0x0800}}
-])
+p_up::PcapSource(filename=pcap_file, src_ip=src_ip, reverse=False) \
+   -> merge::Merge() \
+   -> GenericEncap(fields=[
+        {'size': 6, 'value': {'value_int': 0x000000000000}},
+        {'size': 6, 'value': {'value_int': 0x000000000000}},
+        {'size': 2, 'value': {'value_int': 0x0800}}
+      ]) \
+   -> ntf
+   -> IPChecksum()
+   -> Sink()
 
-sink::Sink()
-
-p_up -> merge -> ether_encap -> ntf -> sink
-p_down -> merge
+p_down::PcapSource(filename=pcap_file, src_ip=src_ip, reverse=True) \
+  -> merge
 
 open('/tmp/uplink.pcap','w').close()
 open('/tmp/downlink.pcap','w').close()
