@@ -141,15 +141,6 @@ struct UserCentricNetworkTokenEntry {
 
 class NTF final : public Module {
  public:
-  enum Direction
-  {
-   kForward = 0,
-   kReverse = 1,
-  };
-		  
-  static const gate_idx_t kNumIGates = 2;
-  static const gate_idx_t kNumOGates = 2;
-  
   static const Commands cmds;
 
   uint32_t dpid;
@@ -163,7 +154,9 @@ class NTF final : public Module {
   CommandResponse CommandEntryModify(const ntf::pb::NtfEntryModifyArg &arg);
   CommandResponse CommandEntryDelete(const ntf::pb::NtfEntryDeleteArg &arg);
 
-  void ProcessBatch(Context *ctx, bess::PacketBatch *batch) override;
+  void ProcessBatch(Context*, bess::PacketBatch*) override;
+
+  std::string GetDesc() const override;
 
  private:
   using FlowTable = bess::utils::CuckooMap<
@@ -176,9 +169,6 @@ class NTF final : public Module {
   std::set<uint8_t> authoritative_dscp_markings;
 
   FlowTable::Entry *CreateNewEntry(const Flow &flow, uint64_t now);
-
-  template <Direction dir>
-    void DoProcessBatch(Context *ctx, bess::PacketBatch *batch);
 
   /**
    * Checks whether a packet contains a network token. 
@@ -216,13 +206,13 @@ class NTF final : public Module {
   void SetDscpMarking(bess::Packet *pkt, uint8_t dscp);
 
   void UpdateAuthoritativeDscpMarkings();
-  
+
   // Per-flow soft state for flows already whitelisted by a token.
   FlowTable flowMap_;
+
   // State for tokens.
   TokenTable tokenMap_;
   uint8_t kDSCP = 0;
-  
 };
 
 #endif // BESS_MODULES_NTF_H_
