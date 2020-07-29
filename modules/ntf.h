@@ -156,6 +156,8 @@ class NTF final : public Module {
 
   void ProcessBatch(Context*, bess::PacketBatch*) override;
 
+  std::string GetDesc() const override;
+
  private:
   using FlowTable = bess::utils::CuckooMap<
     FlowId, NtfFlowEntry, Flow::Hash, Flow::EqualTo>;
