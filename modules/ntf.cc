@@ -269,7 +269,7 @@ void NTF::CheckPacketForNetworkToken(Context *ctx, bess::Packet *pkt) {
     return;
   }
 
-  LOG(WARNING) << "Found a token with app-id " << std::hex << token->app_id << std::dec;
+  DLOG(WARNING) << "Found a token with app-id " << std::hex << token->app_id << std::dec;
 
   auto *hash_item = tokenMap_.Find(token->app_id);
   if(!hash_item) {
@@ -279,7 +279,7 @@ void NTF::CheckPacketForNetworkToken(Context *ctx, bess::Packet *pkt) {
   NtfFlowEntry new_ntf_flow;
   json_t * _token = nte_decrypt(token->payload.c_str(), hash_item->second.encryption_key.c_str());
   if (!_token) {
-    LOG(WARNING) << "NTE Decrypt did not find a valid token";
+    DLOG(WARNING) << "NTE Decrypt did not find a valid token";
     return;
   }
 
@@ -287,11 +287,11 @@ void NTF::CheckPacketForNetworkToken(Context *ctx, bess::Packet *pkt) {
   std::string bound_ip = json_string_value(json_object_get(_token,"bip"));
   be32_t bound_address;
   if (exp_ns < ctx->current_ns) {
-    LOG(WARNING) << "Detected token is expired --- ignoring...";
+    DLOG(WARNING) << "Detected token is expired --- ignoring...";
     return;
   }
   if (!ParseIpv4Address(bound_ip, &bound_address)) {
-    LOG(WARNING) << "Detected token does not have a valid bound IP address --- ignoring...";
+    DLOG(WARNING) << "Detected token does not have a valid bound IP address --- ignoring...";
     return;
   }
 
@@ -299,7 +299,7 @@ void NTF::CheckPacketForNetworkToken(Context *ctx, bess::Packet *pkt) {
   // if the bound ip matches ip source or destination.
   Ipv4 *ip = pkt->head_data<Ipv4 *>(sizeof(Ethernet));
   if ((bound_address != ip->src) && (bound_address != ip->dst)) {
-    LOG(WARNING) << "Detected token is bound to an IP other than source and destination (BIP:" <<
+    DLOG(WARNING) << "Detected token is bound to an IP other than source and destination (BIP:" <<
       ToIpv4Address(bound_address) << " SRCIP:" << ToIpv4Address(ip->src) << " DSTIP:" << ToIpv4Address(ip->dst);
     return;
   }
@@ -312,7 +312,7 @@ void NTF::CheckPacketForNetworkToken(Context *ctx, bess::Packet *pkt) {
   flowMap_.Insert(flow_id, new_ntf_flow);
   flowMap_.Insert(reverse_flow_id, new_ntf_flow);
 
-  LOG(WARNING) << "Verified token with app-id " << std::hex << token->app_id << " --- marking packets with DSCP " << (uint16_t) new_ntf_flow.dscp << std::dec;
+  DLOG(WARNING) << "Verified token with app-id " << std::hex << token->app_id << " --- marking packets with DSCP " << (uint16_t) new_ntf_flow.dscp << std::dec;
 }
 
 void NTF::ResetDscpMarking(bess::Packet *pkt) {
