@@ -6,7 +6,10 @@ pcap_file = "/opt/ntf/pcap-samples/network-token-sample.pcap"
 
 ntf::NTF()
 ntf.table_create(dpid=1, max_entries=5)
-ntf.entry_create(dpid=1,entry_id=1,dscp=1,token={'app_id':0x10001,'encryption_key':'{"alg":"A128CBC-HS256","k":"Qr_XwDGctna3SlR88rEJYt6Zm100SASYeJWSJihDnsA","kty":"oct"}'})
+ntf.entry_create(dpid=1, entry_id=1, dscp=1, token={
+  'app_id': 0xB00F,
+  'encryption_key': '{"alg":"A128CBC-HS256","k":"Qr_XwDGctna3SlR88rEJYt6Zm100SASYeJWSJihDnsA","kty":"oct"}'
+})
 
 p_up::PcapSource(filename=pcap_file, src_ip=src_ip, reverse=False) \
    -> merge::Merge() \
@@ -15,9 +18,9 @@ p_up::PcapSource(filename=pcap_file, src_ip=src_ip, reverse=False) \
         {'size': 6, 'value': {'value_int': 0x000000000000}},
         {'size': 2, 'value': {'value_int': 0x0800}}
       ]) \
-   -> ntf
-   -> IPChecksum()
-   -> Sink()
+   -> ntf \
+   -> IPChecksum() \
+   -> sink::Sink()
 
 p_down::PcapSource(filename=pcap_file, src_ip=src_ip, reverse=True) \
   -> merge
