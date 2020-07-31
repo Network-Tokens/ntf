@@ -394,7 +394,7 @@ void NTF::ProcessBatch(Context *ctx, bess::PacketBatch *batch) {
 };
 
 std::string NTF::GetDesc() const {
-  return bess::utils::Format("%zu tokens, %zu active flows",
+  return bess::utils::Format("%zu services, %zu active tokens",
         tokenMap_.Count(), flowMap_.Count());
 }
 
