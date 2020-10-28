@@ -20,14 +20,12 @@ message UserCentricNetworkToken {
 message NtfEntryCreateArg {
 	uint32 dpid = 1;
 	UserCentricNetworkToken token = 2;
-	uint32 entry_id = 3;
 	uint32 dscp = 4;
 }
 
 message NtfEntryModifyArg {
 	uint32 dpid = 1;
 	UserCentricNetworkToken token = 2;
-	uint32 entry_id = 3;
 	uint32 dscp = 4;
 }
 

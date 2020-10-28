@@ -62,9 +62,8 @@ def ntf_delete_table(dpid):
 
     run_ntf_command('table_delete', 'NtfTableDeleteArg', args)
 
-def ntf_create_entry(dpid, app_id, encryption_key, blacklist, entry_id, dscp):
+def ntf_create_entry(dpid, app_id, encryption_key, blacklist, dscp):
     args = {'dpid' : dpid,
-            'entry_id' : entry_id,
             'token' : {'app_id' : app_id,
                        'encryption_key': encryption_key
                        },
@@ -78,9 +77,8 @@ def ntf_create_entry(dpid, app_id, encryption_key, blacklist, entry_id, dscp):
 
     run_ntf_command('entry_create','NtfEntryCreateArg',args)
 
-def ntf_modify_entry(dpid, app_id, encryption_key, blacklist, entry_id, dscp):
+def ntf_modify_entry(dpid, app_id, encryption_key, blacklist, dscp):
     args = {'dpid' : dpid,
-            'entry_id' : entry_id,
             'token' : {'app_id' : app_id,
                        'encryption_key': encryption_key
                        },
@@ -132,11 +130,11 @@ def table_delete(args):
 
 def entry_create(args):
     return ntf_create_entry(args.dpid, args.app_id, args.encryption_key,
-            args.blacklist, args.entry_id, args.dscp)
+            args.blacklist, args.dscp)
 
 def entry_modify(args):
     return ntf_modify_entry(args.dpid, args.app_id, args.encryption_key,
-            args.blacklist, args.entry_id, args.dscp)
+            args.blacklist, args.dscp)
 
 def entry_delete(args):
     return ntf_delete_entry(args.dpid, args.app_id)
@@ -173,7 +171,6 @@ if __name__ == '__main__':
     entry_create_parser.add_argument('--app-id', type=int, required=True)
     entry_create_parser.add_argument('--encryption-key', type=str, required=True)
     entry_create_parser.add_argument('--blacklist', type=int, action='append')
-    entry_create_parser.add_argument('--entry-id', type=int, required=True)
     entry_create_parser.add_argument('--dscp', type=int, required=True)
     entry_create_parser.set_defaults(func=entry_create)
 
@@ -182,7 +179,6 @@ if __name__ == '__main__':
     entry_modify_parser.add_argument('--app-id', type=int)
     entry_modify_parser.add_argument('--encryption-key', type=str)
     entry_modify_parser.add_argument('--blacklist', type=int, action='append')
-    entry_modify_parser.add_argument('--entry-id', type=int)
     entry_modify_parser.add_argument('--dscp', type=int)
     entry_modify_parser.set_defaults(func=entry_modify)
 

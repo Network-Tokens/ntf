@@ -101,7 +101,6 @@ NTF::CommandEntryCreate(const ntf::pb::NtfEntryCreateArg &arg) {
   UserCentricNetworkTokenEntry entry;
   entry.app_id = app_id;
   entry.encryption_key = arg.token().encryption_key();
-  entry.id = arg.entry_id();
   entry.dscp = arg.dscp();
   for (int i = 0; i < arg.token().blacklist_size(); i++) {
     entry.blacklist.push_front(arg.token().blacklist(i));
@@ -132,7 +131,6 @@ NTF::CommandEntryModify(const ntf::pb::NtfEntryModifyArg &arg) {
   UserCentricNetworkTokenEntry entry;
   entry.app_id = app_id;
   entry.encryption_key = arg.token().encryption_key();
-  entry.id = arg.entry_id();
   entry.dscp = arg.dscp();
   for (int i = 0; i < arg.token().blacklist_size(); i++)
     entry.blacklist.push_front(arg.token().blacklist(i));
