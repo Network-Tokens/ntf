@@ -6,7 +6,7 @@ pcap_file = "/opt/ntf/pcap-samples/network-token-sample.pcap"
 
 ntf::NTF()
 ntf.table_create(dpid=1, max_entries=5)
-ntf.entry_create(dpid=1, entry_id=1, dscp=1, token={
+ntf.entry_create(dpid=1, dscp=1, token={
   'app_id': 0xB00F,
   'encryption_key': '{"alg":"A128CBC-HS256","k":"Qr_XwDGctna3SlR88rEJYt6Zm100SASYeJWSJihDnsA","kty":"oct"}'
 })
