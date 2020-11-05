@@ -338,8 +338,8 @@ void NTF::SetDscpMarking(bess::Packet *pkt, uint8_t dscp) {
 }
 
 void NTF::UpdateAuthoritativeDscpMarkings() {
-    using TokenTable = bess::utils::CuckooMap<uint32_t, UserCentricNetworkTokenEntry>;
-    // go over all entries and add all dscp actions to the authoritative list.
+    // Go over all entries and add all dscp actions to the authoritative list.
+    authoritative_dscp_markings.clear();
     for (TokenTable::iterator it=tokenMap_.begin(); it!=tokenMap_.end(); ++it) {
         authoritative_dscp_markings.insert(it->second.dscp);
     }
