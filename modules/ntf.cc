@@ -27,6 +27,9 @@ using ntf::utils::Stun;
 using ntf::utils::StunAttribute;
 
 
+// Value to use to indicate no application was detected
+uint32_t APP_ID_NONE = 0x0;
+
 const Commands NTF::cmds = {
     {"table_create", "NtfTableCreateArg", MODULE_CMD_FUNC(&NTF::CommandTableCreate), Command::THREAD_UNSAFE},
     {"table_delete", "NtfTableDeleteArg", MODULE_CMD_FUNC(&NTF::CommandTableDelete), Command::THREAD_UNSAFE},
@@ -37,11 +40,15 @@ const Commands NTF::cmds = {
 
 CommandResponse
 NTF::Init(const bess::pb::EmptyArg &) {
+    using AccessMode = bess::metadata::Attribute::AccessMode;
+
     LOG(WARNING) << __FUNCTION__;
     dpid = 0;
     max_token_entries = 0;
     tokenMap_.Clear();
     flowMap_.Clear();
+
+    app_id_attr = AddMetadataAttr("app_id", sizeof(uint32_t), AccessMode::kWrite);
 
     return CommandSuccess();
 };
@@ -98,10 +105,26 @@ NTF::CommandEntryCreate(const ntf::pb::NtfEntryCreateArg &arg) {
         return CommandFailure(-1, "token table is full");
     }
 
+    LOG(INFO) << " - Creating entry for: " << app_id;
+
     UserCentricNetworkTokenEntry entry;
     entry.app_id = app_id;
     entry.encryption_key = arg.token().encryption_key();
-    entry.dscp = arg.dscp();
+
+    entry.flags.set_app_id = 1; // TODO: Maybe we want to do this conditionally...
+    LOG(INFO) << "   - will set app_id on packet";
+    switch (arg.options_case()) {
+    case ntf::pb::NtfEntryCreateArg::OPTIONS_NOT_SET:
+        // Do nothing...
+        LOG(INFO) << "   - no DSCP set";
+        break;
+    case ntf::pb::NtfEntryCreateArg::kDscp:
+        entry.flags.set_dscp = 1;
+        entry.dscp = arg.dscp();
+        LOG(INFO) << "   - DSCP: 0x" << std::hex << (uint32_t) entry.dscp << std::dec;
+        break;
+    }
+
     for (int i = 0; i < arg.token().blacklist_size(); i++) {
         entry.blacklist.push_front(arg.token().blacklist(i));
     }
@@ -165,7 +188,6 @@ NTF::CommandEntryDelete(const ntf::pb::NtfEntryDeleteArg &arg) {
 }
 
 FlowId NTF::GetFlowId(bess::Packet *pkt) {
-
     Ipv4 *ip = pkt->head_data<Ipv4 *>(sizeof(Ethernet));
     size_t ip_bytes = (ip->header_length) << 2;
 
@@ -187,7 +209,6 @@ FlowId NTF::GetReverseFlowId(FlowId flow_id) {
  * It currently looks for tokens only at UDP STUN packets.
  */
 std::optional<NetworkToken> NTF::ExtractNetworkTokenFromPacket(bess::Packet *pkt) {
-
     // The packet should be an Ethernet frame
     size_t offset = 0;
     Ethernet *eth = pkt->head_data<Ethernet *>();
@@ -273,6 +294,7 @@ void NTF::CheckPacketForNetworkToken(Context *ctx, bess::Packet *pkt) {
 
     auto *hash_item = tokenMap_.Find(token->app_id);
     if(!hash_item) {
+        DLOG(WARNING) << "No app with ID: 0x" << std::hex << token->app_id << std::dec;
         return;
     }
 
@@ -307,6 +329,7 @@ void NTF::CheckPacketForNetworkToken(Context *ctx, bess::Packet *pkt) {
     // if we made it that far, this is a valid token and we should take action.
     new_ntf_flow.last_refresh = ctx->current_ns;
     new_ntf_flow.dscp = hash_item->second.dscp;
+    new_ntf_flow.flags = hash_item->second.flags;
     flow_id = GetFlowId(pkt);
     reverse_flow_id = GetReverseFlowId(flow_id);
     flowMap_.Insert(flow_id, new_ntf_flow);
@@ -373,7 +396,7 @@ void NTF::ProcessBatch(Context *ctx, bess::PacketBatch *batch) {
         (void) hash_reverse_item;
 
         if (hash_item == nullptr) {
-            ResetDscpMarking(pkt);
+            UnmarkPacket(pkt);
         } else {
             // Forward and Reverse entries must have the same lifespan.
             DCHECK(hash_reverse_item != nullptr);
@@ -384,16 +407,40 @@ void NTF::ProcessBatch(Context *ctx, bess::PacketBatch *batch) {
             if (now - hash_item->second.last_refresh> kTimeOutNs) {
                 flowMap_.Remove(hash_item->first);
                 flowMap_.Remove(hash_reverse_item->first);
-                ResetDscpMarking(pkt);
+                UnmarkPacket(pkt);
             } else {
-                SetDscpMarking(pkt, hash_item->second.dscp);
+                MarkPacket(pkt, hash_item->second);
                 hash_item->second.last_refresh = now;
                 hash_reverse_item->second.last_refresh = now;
             }
         }
     }
     RunNextModule(ctx, batch);
-};
+}
+
+void NTF::MarkPacket(bess::Packet* pkt, const NtfFlowEntry &entry) {
+    DLOG(INFO) << __FUNCTION__;
+
+    if (entry.flags.set_app_id) {
+        DLOG(INFO) << " - set app_id";
+        set_attr<uint32_t>(this, app_id_attr, pkt, entry.app_id);
+    }
+
+    if (entry.flags.set_dscp) {
+        DLOG(INFO) << " - set dscp";
+        SetDscpMarking(pkt, entry.dscp);
+    }
+}
+
+void NTF::UnmarkPacket(bess::Packet* pkt) {
+    DLOG(INFO) << __FUNCTION__;
+
+    // We don't check if NtfFlowEntry.set_dscp applies to this packet - if it
+    // contains an authoritative DSCP marking and we want it gone, get rid of
+    // it.
+    DLOG(INFO) << " - clear dscp";
+    ResetDscpMarking(pkt);
+}
 
 std::string NTF::GetDesc() const {
     return bess::utils::Format("%zu services, %zu active tokens",

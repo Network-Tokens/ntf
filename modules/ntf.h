@@ -72,9 +72,16 @@ using bess::utils::be32_t;
  * NTF with no changes (apart from DSCP reseting as discussed earlier).
  */
 
+struct NtfFlowActionFlags {
+    unsigned set_dscp :1;
+    unsigned set_app_id :1;
+};
+
 struct NtfFlowEntry {
     uint64_t last_refresh; // in nanoseconds
+    uint32_t app_id;
     uint8_t dscp;
+    struct NtfFlowActionFlags flags;
 };
 
 struct NetworkTokenHeader {
@@ -137,6 +144,7 @@ struct UserCentricNetworkTokenEntry {
     std::list<uint64_t> blacklist;
     uint32_t id;
     uint8_t dscp;
+    struct NtfFlowActionFlags flags;
 };
 
 class NTF final : public Module {
@@ -195,6 +203,18 @@ class NTF final : public Module {
     void CheckPacketForNetworkToken(Context *ctx, bess::Packet *pkt);
 
     /**
+     * Marks a given packet according to the parameters specified within the
+     * given NtfFlowEntry.
+     */
+    void MarkPacket(bess::Packet *pkt, const NtfFlowEntry &NtfFlowEntry);
+
+    /**
+     * Unmarks a given packet, removing any NTF metadata and resetting any
+     * authoritative DSCP markings.
+     */
+    void UnmarkPacket(bess::Packet *pkt);
+
+    /**
      * Resets the token-specific DSCP marking for flows that have not been
      * whitelisted through a token.
      */
@@ -212,7 +232,9 @@ class NTF final : public Module {
 
     // State for tokens.
     TokenTable tokenMap_;
-    uint8_t kDSCP = 0;
+
+    // Field for app_id attribute
+    int app_id_attr = -1;
 };
 
 #endif // BESS_MODULES_NTF_H_
