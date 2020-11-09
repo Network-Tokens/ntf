@@ -55,7 +55,8 @@ NTF::Init(const bess::pb::EmptyArg &) {
 
 CommandResponse
 NTF::CommandTableCreate(const ntf::pb::NtfTableCreateArg &arg) {
-    LOG(WARNING) << __FUNCTION__ << " " << arg.dpid() << arg.max_entries() ;
+    LOG(WARNING) << __FUNCTION__ << "(dpid=" << arg.dpid() << ", max_entries="
+                 << arg.max_entries() << ")" ;
 
     if (dpid) {
         LOG(WARNING) << "Token table with DPID " << dpid <<
@@ -73,7 +74,7 @@ NTF::CommandTableCreate(const ntf::pb::NtfTableCreateArg &arg) {
 
 CommandResponse
 NTF::CommandTableDelete(const ntf::pb::NtfTableDeleteArg &arg) {
-    LOG(WARNING) << __FUNCTION__ << " " << arg.dpid();
+    LOG(WARNING) << __FUNCTION__ << "(dpid=" << arg.dpid() << ")";
 
     if (dpid != arg.dpid() || dpid == 0) {
         return CommandFailure(-1, "invalid DPID value");
@@ -87,7 +88,10 @@ NTF::CommandTableDelete(const ntf::pb::NtfTableDeleteArg &arg) {
 
 CommandResponse
 NTF::CommandEntryCreate(const ntf::pb::NtfEntryCreateArg &arg) {
-    LOG(WARNING) << __FUNCTION__;
+    LOG(WARNING) << __FUNCTION__ << "(dpid=" << arg.dpid() << ", app_id="
+                 << arg.token().app_id() << ", encryption_key="
+                 << arg.token().encryption_key() << ", dscp=" << arg.dscp()
+                 << ")";
 
     uint32_t app_id;
 
@@ -138,7 +142,10 @@ NTF::CommandEntryCreate(const ntf::pb::NtfEntryCreateArg &arg) {
 
 CommandResponse
 NTF::CommandEntryModify(const ntf::pb::NtfEntryModifyArg &arg) {
-    LOG(WARNING) << __FUNCTION__;
+    LOG(WARNING) << __FUNCTION__ << "(dpid=" << arg.dpid() << ", app_id="
+                 << arg.token().app_id() << ", encryption_key="
+                 << arg.token().encryption_key() << ", dscp=" << arg.dscp()
+                 << ")";
 
     uint32_t app_id;
 
@@ -168,6 +175,9 @@ NTF::CommandEntryModify(const ntf::pb::NtfEntryModifyArg &arg) {
 
 CommandResponse
 NTF::CommandEntryDelete(const ntf::pb::NtfEntryDeleteArg &arg) {
+    LOG(WARNING) << __FUNCTION__ << "(dpid=" << arg.dpid() << ", app_id="
+                 << arg.app_id() << ")";
+
     LOG(WARNING) << __FUNCTION__;
 
     uint32_t app_id;
