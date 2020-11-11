@@ -88,9 +88,10 @@ NTF::CommandTableDelete(const ntf::pb::NtfTableDeleteArg &arg) {
 
 CommandResponse
 NTF::CommandEntryCreate(const ntf::pb::NtfEntryCreateArg &arg) {
-    LOG(WARNING) << __FUNCTION__ << "(dpid=" << arg.dpid() << ", app_id="
-                 << arg.token().app_id() << ", encryption_key="
-                 << arg.token().encryption_key() << ", dscp=" << arg.dscp()
+    LOG(WARNING) << __FUNCTION__ << "(dpid=" << arg.dpid() << std::hex
+                 << ", app_id=" << arg.token().app_id()
+                 << ", dscp=" << arg.dscp() << std::dec
+                 << ", encryption_key=" << arg.token().encryption_key()
                  << ")";
 
     uint32_t app_id;
@@ -133,8 +134,11 @@ NTF::CommandEntryCreate(const ntf::pb::NtfEntryCreateArg &arg) {
         entry.blacklist.push_front(arg.token().blacklist(i));
     }
     if (!tokenMap_.Insert(entry.app_id, entry)) {
+        LOG(WARNING) << "Failed to insert entry";
         return CommandFailure(-1, "failed to create new entry");
     }
+
+    LOG(WARNING) << "Entry inserted for 0x" << std::hex << entry.app_id << std::dec;
 
     UpdateAuthoritativeDscpMarkings();
     return CommandSuccess();
@@ -142,9 +146,10 @@ NTF::CommandEntryCreate(const ntf::pb::NtfEntryCreateArg &arg) {
 
 CommandResponse
 NTF::CommandEntryModify(const ntf::pb::NtfEntryModifyArg &arg) {
-    LOG(WARNING) << __FUNCTION__ << "(dpid=" << arg.dpid() << ", app_id="
-                 << arg.token().app_id() << ", encryption_key="
-                 << arg.token().encryption_key() << ", dscp=" << arg.dscp()
+    LOG(WARNING) << __FUNCTION__ << "(dpid=" << arg.dpid() << std::hex
+                 << ", app_id=" << arg.token().app_id()
+                 << ", dscp=" << arg.dscp() << std::dec
+                 << ", encryption_key=" << arg.token().encryption_key()
                  << ")";
 
     uint32_t app_id;
@@ -300,18 +305,18 @@ void NTF::CheckPacketForNetworkToken(Context *ctx, bess::Packet *pkt) {
         return;
     }
 
-    DLOG(WARNING) << "Found a token with app-id " << std::hex << token->app_id << std::dec;
+    LOG(WARNING) << "Found a token with app-id 0x" << std::hex << token->app_id << std::dec;
 
     auto *hash_item = tokenMap_.Find(token->app_id);
     if(!hash_item) {
-        DLOG(WARNING) << "No app with ID: 0x" << std::hex << token->app_id << std::dec;
+        LOG(WARNING) << "No app with ID: 0x" << std::hex << token->app_id << std::dec;
         return;
     }
 
     NtfFlowEntry new_ntf_flow;
     json_t * _token = nte_decrypt(token->payload.c_str(), hash_item->second.encryption_key.c_str());
     if (!_token) {
-        DLOG(WARNING) << "NTE Decrypt did not find a valid token";
+        LOG(WARNING) << "NTE Decrypt did not find a valid token";
         return;
     }
 
@@ -319,11 +324,11 @@ void NTF::CheckPacketForNetworkToken(Context *ctx, bess::Packet *pkt) {
     std::string bound_ip = json_string_value(json_object_get(_token,"bip"));
     be32_t bound_address;
     if (exp_ns < ctx->current_ns) {
-        DLOG(WARNING) << "Detected token is expired --- ignoring...";
+        LOG(WARNING) << "Detected token is expired --- ignoring...";
         return;
     }
     if (!ParseIpv4Address(bound_ip, &bound_address)) {
-        DLOG(WARNING) << "Detected token does not have a valid bound IP address --- ignoring...";
+        LOG(WARNING) << "Detected token does not have a valid bound IP address --- ignoring...";
         return;
     }
 
@@ -331,7 +336,7 @@ void NTF::CheckPacketForNetworkToken(Context *ctx, bess::Packet *pkt) {
     // check if the bound ip matches ip source or destination.
     Ipv4 *ip = pkt->head_data<Ipv4 *>(sizeof(Ethernet));
     if ((bound_address != ip->src) && (bound_address != ip->dst)) {
-        DLOG(WARNING) << "Detected token is bound to an IP other than source and destination (BIP:" <<
+        LOG(WARNING) << "Detected token is bound to an IP other than source and destination (BIP:" <<
             ToIpv4Address(bound_address) << " SRCIP:" << ToIpv4Address(ip->src) << " DSTIP:" << ToIpv4Address(ip->dst);
         return;
     }
@@ -345,9 +350,9 @@ void NTF::CheckPacketForNetworkToken(Context *ctx, bess::Packet *pkt) {
     flowMap_.Insert(flow_id, new_ntf_flow);
     flowMap_.Insert(reverse_flow_id, new_ntf_flow);
 
-    DLOG(WARNING) << "Verified token with app-id " << std::hex << token->app_id
-                  << " --- marking packets with DSCP "
-                  << (uint16_t) new_ntf_flow.dscp << std::dec;
+    LOG(WARNING) << "Verified token with app-id 0x" << std::hex << token->app_id
+                 << " --- marking packets with DSCP 0x"
+                 << (uint16_t) new_ntf_flow.dscp << std::dec;
 }
 
 void NTF::ResetDscpMarking(bess::Packet *pkt) {
@@ -371,9 +376,12 @@ void NTF::SetDscpMarking(bess::Packet *pkt, uint8_t dscp) {
 }
 
 void NTF::UpdateAuthoritativeDscpMarkings() {
+    LOG(WARNING) << __FUNCTION__;
+
     // Go over all entries and add all dscp actions to the authoritative list.
     authoritative_dscp_markings.clear();
     for (TokenTable::iterator it=tokenMap_.begin(); it!=tokenMap_.end(); ++it) {
+        LOG(WARNING) << std::hex << " - 0x" << it->first << ": 0x" << (int)it->second.dscp << std::dec;
         authoritative_dscp_markings.insert(it->second.dscp);
     }
 }
