@@ -74,13 +74,14 @@ using bess::utils::be32_t;
 
 struct NtfFlowActionFlags {
     unsigned set_dscp :1;
-    unsigned set_app_id :1;
+    unsigned set_rule_id :1;
 };
 
 struct NtfFlowEntry {
     uint64_t last_refresh; // in nanoseconds
     uint32_t app_id;
     uint8_t dscp;
+    uint32_t rule_id;
     struct NtfFlowActionFlags flags;
 };
 
@@ -233,8 +234,8 @@ class NTF final : public Module {
     // State for tokens.
     TokenTable tokenMap_;
 
-    // Field for app_id attribute
-    int app_id_attr = -1;
+    // Field for rule ID attribute
+    int rule_id_attr = -1;
 };
 
 #endif // BESS_MODULES_NTF_H_

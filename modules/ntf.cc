@@ -48,7 +48,7 @@ NTF::Init(const bess::pb::EmptyArg &) {
     tokenMap_.Clear();
     flowMap_.Clear();
 
-    app_id_attr = AddMetadataAttr("app_id", sizeof(uint32_t), AccessMode::kWrite);
+    rule_id_attr = AddMetadataAttr("app_id", sizeof(uint32_t), AccessMode::kWrite);
 
     return CommandSuccess();
 };
@@ -90,18 +90,16 @@ CommandResponse
 NTF::CommandEntryCreate(const ntf::pb::NtfEntryCreateArg &arg) {
     LOG(WARNING) << __FUNCTION__ << "(dpid=" << arg.dpid() << std::hex
                  << ", app_id=" << arg.token().app_id()
-                 << ", dscp=" << arg.dscp() << std::dec
                  << ", encryption_key=" << arg.token().encryption_key()
+                 << ", dscp=" << arg.dscp() << std::dec
+                 << ", rule_id=" << arg.rule_id()
                  << ")";
-
-    uint32_t app_id;
 
     if (dpid == 0 || arg.dpid() != dpid) {
         return CommandFailure(-1, "invalid DPID value");
     }
 
-    app_id = arg.token().app_id();
-
+    uint32_t app_id = arg.token().app_id();
     if (tokenMap_.Find(app_id)) {
         return CommandFailure(-1, "token with app_id already exists --- use entry_modify instead");
     }
@@ -116,7 +114,7 @@ NTF::CommandEntryCreate(const ntf::pb::NtfEntryCreateArg &arg) {
     entry.app_id = app_id;
     entry.encryption_key = arg.token().encryption_key();
 
-    entry.flags.set_app_id = 1; // TODO: Maybe we want to do this conditionally...
+    entry.flags.set_rule_id = entry.rule_id > 0;
     LOG(INFO) << "   - will set app_id on packet";
     switch (arg.options_case()) {
     case ntf::pb::NtfEntryCreateArg::OPTIONS_NOT_SET:
@@ -439,9 +437,9 @@ void NTF::ProcessBatch(Context *ctx, bess::PacketBatch *batch) {
 void NTF::MarkPacket(bess::Packet* pkt, const NtfFlowEntry &entry) {
     DLOG(INFO) << __FUNCTION__;
 
-    if (entry.flags.set_app_id) {
-        DLOG(INFO) << " - set app_id";
-        set_attr<uint32_t>(this, app_id_attr, pkt, entry.app_id);
+    if (entry.flags.set_rule_id) {
+        DLOG(INFO) << " - set rule_id";
+        set_attr<uint32_t>(this, rule_id_attr, pkt, entry.rule_id);
     }
 
     if (entry.flags.set_dscp) {
