@@ -353,6 +353,8 @@ void NTF::CheckPacketForNetworkToken(Context *ctx, bess::Packet *pkt) {
 }
 
 void NTF::ResetDscpMarking(bess::Packet *pkt) {
+    DLOG(INFO) << __FUNCTION__;
+
     Ipv4 *ip = pkt->head_data<Ipv4 *>(sizeof(Ethernet));
     // Do nothing if TOS is 0.
     // This will be the most common, so check first to avoid set lookup.
@@ -411,7 +413,7 @@ void NTF::ProcessBatch(Context *ctx, bess::PacketBatch *batch) {
         (void) hash_reverse_item;
 
         if (hash_item == nullptr) {
-            UnmarkPacket(pkt);
+            ResetDscpMarking(pkt);
         } else {
             // Forward and Reverse entries must have the same lifespan.
             DCHECK(hash_reverse_item != nullptr);
@@ -422,9 +424,9 @@ void NTF::ProcessBatch(Context *ctx, bess::PacketBatch *batch) {
             if (now - hash_item->second.last_refresh> kTimeOutNs) {
                 flowMap_.Remove(hash_item->first);
                 flowMap_.Remove(hash_reverse_item->first);
-                UnmarkPacket(pkt);
+                ResetDscpMarking(pkt);
             } else {
-                MarkPacket(pkt, hash_item->second);
+                ApplyFlowActionsToPacket(pkt, hash_item->second);
                 hash_item->second.last_refresh = now;
                 hash_reverse_item->second.last_refresh = now;
             }
@@ -433,7 +435,7 @@ void NTF::ProcessBatch(Context *ctx, bess::PacketBatch *batch) {
     RunNextModule(ctx, batch);
 }
 
-void NTF::MarkPacket(bess::Packet* pkt, const NtfFlowEntry &entry) {
+void NTF::ApplyFlowActionsToPacket(bess::Packet* pkt, const NtfFlowEntry &entry) {
     DLOG(INFO) << __FUNCTION__;
 
     if (entry.flags.set_rule_id) {
@@ -445,16 +447,6 @@ void NTF::MarkPacket(bess::Packet* pkt, const NtfFlowEntry &entry) {
         DLOG(INFO) << " - set dscp";
         SetDscpMarking(pkt, entry.dscp);
     }
-}
-
-void NTF::UnmarkPacket(bess::Packet* pkt) {
-    DLOG(INFO) << __FUNCTION__;
-
-    // We don't check if NtfFlowEntry.set_dscp applies to this packet - if it
-    // contains an authoritative DSCP marking and we want it gone, get rid of
-    // it.
-    DLOG(INFO) << " - clear dscp";
-    ResetDscpMarking(pkt);
 }
 
 std::string NTF::GetDesc() const {

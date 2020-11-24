@@ -140,9 +140,9 @@ struct Flow {
     struct EqualTo {
         bool operator()(const FlowId &id1, const FlowId &id2) const {
             bool ips =
-                    (id1.src_addr == id2.src_addr) && (id1.dst_addr == id2.dst_addr);
+               (id1.src_addr == id2.src_addr) && (id1.dst_addr == id2.dst_addr);
             bool ports =
-                    (id1.src_tp == id2.src_tp) && (id1.dst_tp == id2.dst_tp);
+               (id1.src_tp == id2.src_tp) && (id1.dst_tp == id2.dst_tp);
             return (ips && ports) && (id1.protocol == id2.protocol);
         }
     };
@@ -199,7 +199,8 @@ class NTF final : public Module {
      *
      * Returns pointer to the network token, or nullptr if no token found.
      */
-    std::optional<NetworkToken> ExtractNetworkTokenFromPacket(bess::Packet *pkt);
+    std::optional<NetworkToken>
+        ExtractNetworkTokenFromPacket(bess::Packet *pkt);
 
     // Get    a flow id (5-tuple) from a packet.
     FlowId GetFlowId(bess::Packet *pkt);
@@ -209,24 +210,19 @@ class NTF final : public Module {
 
     /**
      * CheckPacketForNetworkToken performs all token-related functions for a
-     * packet.    It uses ExtractNetworkTokenFromPacket to detect token for a
-     * packet.    Verifies that this is a valid token and if so, evaluates it.    It
-     * installs the necessary state to apply desired actions (e.g., DSCP marking)
-     * for follow-up packets that belong to the same flow.
+     * packet.  It uses ExtractNetworkTokenFromPacket to detect token for a
+     * packet.  Verifies that this is a valid token and if so, evaluates it.
+     * It installs the necessary state to apply desired actions (e.g., DSCP
+     * marking) for follow-up packets that belong to the same flow.
      */
     void CheckPacketForNetworkToken(Context *ctx, bess::Packet *pkt);
 
     /**
-     * Marks a given packet according to the parameters specified within the
-     * given NtfFlowEntry.
+     * Assuming *pkt points to a packet from a flow that has presented a valid
+     * network token, apply the actions within the given NtfFlowEntry.
      */
-    void MarkPacket(bess::Packet *pkt, const NtfFlowEntry &NtfFlowEntry);
-
-    /**
-     * Unmarks a given packet, removing any NTF metadata and resetting any
-     * authoritative DSCP markings.
-     */
-    void UnmarkPacket(bess::Packet *pkt);
+    void ApplyFlowActionsToPacket(bess::Packet *pkt,
+                                  const NtfFlowEntry &NtfFlowEntry);
 
     /**
      * Resets the token-specific DSCP marking for flows that have not been
