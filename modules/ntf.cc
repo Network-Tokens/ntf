@@ -48,7 +48,7 @@ NTF::Init(const bess::pb::EmptyArg &) {
     tokenMap_.Clear();
     flowMap_.Clear();
 
-    rule_id_attr = AddMetadataAttr("app_id", sizeof(uint32_t), AccessMode::kWrite);
+    rule_id_attr = AddMetadataAttr("rule_id", sizeof(uint32_t), AccessMode::kWrite);
 
     return CommandSuccess();
 };
@@ -86,38 +86,31 @@ NTF::CommandTableDelete(const ntf::pb::NtfTableDeleteArg &arg) {
     return CommandSuccess();
 };
 
-CommandResponse
-NTF::CommandEntryCreate(const ntf::pb::NtfEntryCreateArg &arg) {
-    LOG(WARNING) << __FUNCTION__ << "(dpid=" << arg.dpid() << std::hex
-                 << ", app_id=" << arg.token().app_id()
-                 << ", encryption_key=" << arg.token().encryption_key()
-                 << ", dscp=" << arg.dscp() << std::dec
-                 << ", rule_id=" << arg.rule_id()
-                 << ")";
 
+template<class T> CommandResponse
+NTF::EntrySet(const T &arg) {
     if (dpid == 0 || arg.dpid() != dpid) {
         return CommandFailure(-1, "invalid DPID value");
     }
 
-    uint32_t app_id = arg.token().app_id();
-    if (tokenMap_.Find(app_id)) {
-        return CommandFailure(-1, "token with app_id already exists --- use entry_modify instead");
-    }
-
-    if (tokenMap_.Count() == max_token_entries) {
-        return CommandFailure(-1, "token table is full");
-    }
-
-    LOG(INFO) << " - Creating entry for: " << app_id;
-
     UserCentricNetworkTokenEntry entry;
-    entry.app_id = app_id;
+    entry.app_id = arg.token().app_id();
     entry.encryption_key = arg.token().encryption_key();
 
-    entry.flags.set_rule_id = entry.rule_id > 0;
-    LOG(INFO) << "   - will set app_id on packet";
-    switch (arg.options_case()) {
-    case ntf::pb::NtfEntryCreateArg::OPTIONS_NOT_SET:
+    switch (arg.set_rule_id_case()) {
+    case ntf::pb::NtfEntryCreateArg::SET_RULE_ID_NOT_SET:
+        // Do nothing... 
+        LOG(INFO) << "   - won't set rule ID";
+        break;
+    case T::kRuleId:
+        entry.flags.set_rule_id = entry.rule_id > 0;
+        entry.rule_id = arg.rule_id();
+        LOG(INFO) << "   - will set rule_id on packet";
+        break;
+    }
+
+    switch (arg.set_dscp_case()) {
+    case T::SET_DSCP_NOT_SET:
         // Do nothing...
         LOG(INFO) << "   - no DSCP set";
         break;
@@ -140,40 +133,46 @@ NTF::CommandEntryCreate(const ntf::pb::NtfEntryCreateArg &arg) {
 
     UpdateAuthoritativeDscpMarkings();
     return CommandSuccess();
+}
+
+
+CommandResponse
+NTF::CommandEntryCreate(const ntf::pb::NtfEntryCreateArg &arg) {
+    LOG(WARNING) << __FUNCTION__ << "(dpid=" << arg.dpid() << std::hex
+                 << ", app_id=" << arg.token().app_id()
+                 << ", encryption_key=" << arg.token().encryption_key()
+                 << ", dscp=" << arg.dscp() << std::dec
+                 << ", rule_id=" << arg.rule_id()
+                 << ")";
+
+    uint32_t app_id = arg.token().app_id();
+    if (tokenMap_.Find(app_id)) {
+        return CommandFailure(-1, "token with app_id already exists --- use entry_modify instead");
+    }
+
+    if (tokenMap_.Count() == max_token_entries) {
+        return CommandFailure(-1, "token table is full");
+    }
+
+    LOG(INFO) << " - Creating entry for: " << app_id;
+    return EntrySet(arg);
 };
 
 CommandResponse
 NTF::CommandEntryModify(const ntf::pb::NtfEntryModifyArg &arg) {
     LOG(WARNING) << __FUNCTION__ << "(dpid=" << arg.dpid() << std::hex
                  << ", app_id=" << arg.token().app_id()
-                 << ", dscp=" << arg.dscp() << std::dec
                  << ", encryption_key=" << arg.token().encryption_key()
+                 << ", dscp=" << arg.dscp() << std::dec
+                 << ", rule_id=" << arg.rule_id()
                  << ")";
 
-    uint32_t app_id;
-
-    if (dpid == 0 || arg.dpid() != dpid) {
-        return CommandFailure(-1, "invalid DPID value");
-    }
-
-    app_id = arg.token().app_id();
+    uint32_t app_id = arg.token().app_id();
     if (!tokenMap_.Find(app_id)) {
         return CommandFailure(-1, "token with app_id doesn't exist --- use entry_create instead");
     }
 
-    UserCentricNetworkTokenEntry entry;
-    entry.app_id = app_id;
-    entry.encryption_key = arg.token().encryption_key();
-    entry.dscp = arg.dscp();
-    for (int i = 0; i < arg.token().blacklist_size(); i++)
-        entry.blacklist.push_front(arg.token().blacklist(i));
-
-    if (!tokenMap_.Insert(entry.app_id, entry)) {
-        return CommandFailure(-1, "failed to modify entry");
-    }
-
-    UpdateAuthoritativeDscpMarkings();
-    return CommandSuccess();
+    return EntrySet(arg);
 };
 
 CommandResponse

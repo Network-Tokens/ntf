@@ -56,11 +56,20 @@ using bess::utils::be32_t;
  * the key with which tokens are encrypted/decrypted, a blacklist, and the
  * actions to take when a token is detected.
  *
- * The only supported action right now is to mark the packet with a specific
- * DSCP codepoint.    To prevent abuse, NTF assumes authoritative actions with
- * regards to DSCP markings. If deemed responsible for a specific codepoint,
- * only packets/flows with valid tokens will have this marking. If such marking
- * is found in other flows, it will be reset to 0.
+ * The supported actions right now are to mark the packet with a specific
+ * DSCP codepoint, and to set the rule ID as metadata on packets.
+ *
+ * To prevent abuse, NTF assumes authoritative actions with regards to DSCP
+ * markings. If deemed responsible for a specific codepoint, only packets/flows
+ * with valid tokens will have this marking. If such marking is found in other
+ * flows, it will be reset to 0.
+ *
+ * The rule_id metadata attribute can be set on packets from flows with a valid
+ * network token.  The rule ID can be specified by an operator and can be used
+ * to drive other decisions in the pipeline - for example, a UPF function might
+ * contain a function that detects the rule_id attribute on new flows and
+ * informs the PCRF of the flow description, so a dedicated bearer can be set
+ * up dynamically.
  *
  * Every packet that enters NTF is checked for network tokens (currently only
  * as STUN attributes).    When a valid token is detected, NTF enforces the
@@ -145,6 +154,7 @@ struct UserCentricNetworkTokenEntry {
     std::list<uint64_t> blacklist;
     uint32_t id;
     uint8_t dscp;
+    uint32_t rule_id;
     struct NtfFlowActionFlags flags;
 };
 
@@ -168,6 +178,9 @@ class NTF final : public Module {
     std::string GetDesc() const override;
 
  private:
+    template<class T>
+    CommandResponse EntrySet(const T &arg);
+
     using FlowTable = bess::utils::CuckooMap<
         FlowId, NtfFlowEntry, Flow::Hash, Flow::EqualTo>;
     using TokenTable = bess::utils::CuckooMap<
