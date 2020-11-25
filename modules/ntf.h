@@ -89,8 +89,8 @@ struct NtfFlowActionFlags {
 struct NtfFlowEntry {
     uint64_t last_refresh; // in nanoseconds
     uint32_t app_id;
-    uint8_t dscp;
     uint32_t rule_id;
+    uint8_t dscp;
     struct NtfFlowActionFlags flags;
 };
 
@@ -108,11 +108,10 @@ struct NetworkToken {
 struct FlowId {
     uint32_t src_addr;
     uint32_t dst_addr;
-
-    uint8_t protocol;
-
     uint16_t src_tp;
     uint16_t dst_tp;
+    uint8_t protocol;
+
 };
 
 struct Flow {
