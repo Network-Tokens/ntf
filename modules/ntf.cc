@@ -311,7 +311,10 @@ void NTF::CheckPacketForNetworkToken(Context *ctx, bess::Packet *pkt) {
     }
 
     NtfFlowEntry new_ntf_flow;
-    json_t * _token = nte_decrypt(token->payload.c_str(), hash_item->second.encryption_key.c_str());
+    json_t * _token = nte_decrypt(token->payload.data(),
+                                  token->payload.size(),
+                                  hash_item->second.encryption_key.data(),
+                                  hash_item->second.encryption_key.size());
     if (!_token) {
         DLOG(WARNING) << "NTE Decrypt did not find a valid token";
         return;
