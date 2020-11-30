@@ -204,8 +204,11 @@ FlowId NTF::GetFlowId(bess::Packet *pkt) {
     size_t ip_bytes = (ip->header_length) << 2;
 
     Udp *udp = pkt->head_data<Udp *>(sizeof(Ethernet) + ip_bytes);
-    FlowId id = {ip->src.value(), ip->dst.value(), ip->protocol,
-                             udp->src_port.value(), udp->dst_port.value()};
+    FlowId id = {
+        ip->src.value(), ip->dst.value(),
+        udp->src_port.value(), udp->dst_port.value(),
+        ip->protocol
+    };
 
     return id;
 };
