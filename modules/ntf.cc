@@ -42,7 +42,7 @@ CommandResponse
 NTF::Init(const bess::pb::EmptyArg &) {
     using AccessMode = bess::metadata::Attribute::AccessMode;
 
-    LOG(WARNING) << __FUNCTION__;
+    DLOG(WARNING) << __FUNCTION__;
     dpid = 0;
     max_token_entries = 0;
     tokenMap_.Clear();
@@ -55,11 +55,11 @@ NTF::Init(const bess::pb::EmptyArg &) {
 
 CommandResponse
 NTF::CommandTableCreate(const ntf::pb::NtfTableCreateArg &arg) {
-    LOG(WARNING) << __FUNCTION__ << "(dpid=" << arg.dpid() << ", max_entries="
+    DLOG(WARNING) << __FUNCTION__ << "(dpid=" << arg.dpid() << ", max_entries="
                  << arg.max_entries() << ")" ;
 
     if (dpid) {
-        LOG(WARNING) << "Token table with DPID " << dpid <<
+        DLOG(WARNING) << "Token table with DPID " << dpid <<
             " already exists, delete this first to proceed";
         return CommandFailure(-1, "token table already exists, delete this first to proceed");
     }
@@ -74,7 +74,7 @@ NTF::CommandTableCreate(const ntf::pb::NtfTableCreateArg &arg) {
 
 CommandResponse
 NTF::CommandTableDelete(const ntf::pb::NtfTableDeleteArg &arg) {
-    LOG(WARNING) << __FUNCTION__ << "(dpid=" << arg.dpid() << ")";
+    DLOG(WARNING) << __FUNCTION__ << "(dpid=" << arg.dpid() << ")";
 
     if (dpid != arg.dpid() || dpid == 0) {
         return CommandFailure(-1, "invalid DPID value");
@@ -129,7 +129,7 @@ NTF::EntrySet(const T &arg) {
         return CommandFailure(-1, "failed to create new entry");
     }
 
-    LOG(WARNING) << "Entry inserted for 0x" << std::hex << entry.app_id << std::dec;
+    DLOG(WARNING) << "Entry inserted for 0x" << std::hex << entry.app_id << std::dec;
 
     UpdateAuthoritativeDscpMarkings();
     return CommandSuccess();
@@ -179,8 +179,6 @@ CommandResponse
 NTF::CommandEntryDelete(const ntf::pb::NtfEntryDeleteArg &arg) {
     LOG(WARNING) << __FUNCTION__ << "(dpid=" << arg.dpid() << ", app_id="
                  << arg.app_id() << ")";
-
-    LOG(WARNING) << __FUNCTION__;
 
     uint32_t app_id;
 

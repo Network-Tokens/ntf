@@ -17,20 +17,20 @@ json_t * nte_decrypt(const char * token_buf, size_t token_buf_len,
   cjose_err error;
   cjose_jwe_t *jwe = cjose_jwe_import(token_buf, token_buf_len, &error);
   if(!jwe) {
-    LOG(WARNING) << "Failed to load JWE ( " << error.message << " )";
+    DLOG(WARNING) << "Failed to load JWE ( " << error.message << " )";
     return nullptr;
   }
 
   cjose_jwk_t *jwk = cjose_jwk_import(key_buf, key_buf_len, &error);
   if(!jwk) {
-    LOG(WARNING) << "Failed to load JWK ( " << error.message << " )";
+    DLOG(WARNING) << "Failed to load JWK ( " << error.message << " )";
     return nullptr;
   }
 
   size_t n_bytes = 0;
   uint8_t *output = cjose_jwe_decrypt(jwe, jwk, &n_bytes, &error);
   if (!output) {
-    LOG(WARNING) << "Failed to decrypt token ( " << error.message << " )";
+    DLOG(WARNING) << "Failed to decrypt token ( " << error.message << " )";
     return nullptr;
   }
 
