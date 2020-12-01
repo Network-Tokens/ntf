@@ -14,7 +14,6 @@ extern "C" {
 
 json_t * nte_decrypt(const char * token_buf, size_t token_buf_len,
                      const char * key_buf, size_t key_buf_len) {
-  token_buf_len = 181; // TODO: Remove me
   cjose_err error;
   cjose_jwe_t *jwe = cjose_jwe_import(token_buf, token_buf_len, &error);
   if(!jwe) {
