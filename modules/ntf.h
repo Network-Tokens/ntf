@@ -45,174 +45,205 @@ using bess::utils::be32_t;
 
 /**
  * NTF detects network tokens in STUN messages,
- * and sets the appropriate DSCP marking. 
- * 
+ * and sets the appropriate DSCP marking.
+ *
  * Method of operation:
- * 
+ *
  * NTF holds a number of network token entries in tokenTable. Each entry
  * describes a token, and is indexed through a unique app_id. app_id means a
  * network token application. For the purposes of this implementation an app_id
  * identifies a service offered by an operator. A network token entry includes
  * the key with which tokens are encrypted/decrypted, a blacklist, and the
- * actions to take when a token is detected. 
- * 
- * The only supported action right now is to mark the packet with a specific
- * DSCP codepoint.  To prevent abuse, NTF assumes authoritative actions with
- * regards to DSCP markings. If deemed responsible for a specific codepoint,
- * only packets/flows with valid tokens will have this marking. If such marking
- * is found in other flows, it will be reset to 0. 
- * 
+ * actions to take when a token is detected.
+ *
+ * The supported actions right now are to mark the packet with a specific
+ * DSCP codepoint, and to set the rule ID as metadata on packets.
+ *
+ * To prevent abuse, NTF assumes authoritative actions with regards to DSCP
+ * markings. If deemed responsible for a specific codepoint, only packets/flows
+ * with valid tokens will have this marking. If such marking is found in other
+ * flows, it will be reset to 0.
+ *
+ * The rule_id metadata attribute can be set on packets from flows with a valid
+ * network token.  The rule ID can be specified by an operator and can be used
+ * to drive other decisions in the pipeline - for example, a UPF function might
+ * contain a function that detects the rule_id attribute on new flows and
+ * informs the PCRF of the flow description, so a dedicated bearer can be set
+ * up dynamically.
+ *
  * Every packet that enters NTF is checked for network tokens (currently only
- * as STUN attributes).  When a valid token is detected, NTF enforces the
- * respective action and sets the DSCP marking.  NTF also (temporarily) stores
+ * as STUN attributes).    When a valid token is detected, NTF enforces the
+ * respective action and sets the DSCP marking.    NTF also (temporarily) stores
  * the 5-tuple of this flow into flow table, so that subsequent packets of this
  * flow are associated with this token.
- * 
+ *
  * Packets with no tokens (or with invalid/unverified tokens) pass through the
- * NTF with no changes (apart from DSCP reseting as discussed earlier). 
+ * NTF with no changes (apart from DSCP reseting as discussed earlier).
  */
 
+struct NtfFlowActionFlags {
+    unsigned set_dscp :1;
+    unsigned set_rule_id :1;
+};
+
 struct NtfFlowEntry {
-  uint64_t last_refresh; // in nanoseconds
-  uint8_t dscp;
+    uint64_t last_refresh; // in nanoseconds
+    uint32_t app_id;
+    uint32_t rule_id;
+    uint8_t dscp;
+    struct NtfFlowActionFlags flags;
 };
 
 struct NetworkTokenHeader {
-  be32_t header;
-  char payload[];
+    be32_t header;
+    char payload[];
 };
 
 struct NetworkToken {
-  uint8_t reflect_type;
-  uint32_t app_id;
-  std::string payload;
+    uint8_t reflect_type;
+    uint32_t app_id;
+    std::string payload;
 };
 
 struct FlowId {
-  uint32_t src_addr;
-  uint32_t dst_addr;
+    uint32_t src_addr;
+    uint32_t dst_addr;
+    uint16_t src_tp;
+    uint16_t dst_tp;
+    uint8_t protocol;
 
-  uint8_t protocol;
-
-  uint16_t src_tp;
-  uint16_t dst_tp;
 };
 
 struct Flow {
-  FlowId id;
+    FlowId id;
 
-  // hashes a FlowId
-  struct Hash {
-    // a similar method to boost's hash_combine in order to combine hashes
-    inline void combine(std::size_t &hash, const unsigned int &val) const {
-      std::hash<unsigned int> hasher;
-      hash ^= hasher(val) + 0x9e3779b9 + (hash << 6) + (hash >> 2);
-    }
-    bess::utils::HashResult operator()(const FlowId &id) const {
-      std::size_t hash = 0;
-      combine(hash, id.src_addr);
-      combine(hash, id.dst_addr);
-      combine(hash, id.src_tp);
-      combine(hash, id.dst_tp);
-      combine(hash, (uint32_t)id.protocol);
-      return hash;
-    }
-  };
+    // hashes a FlowId
+    struct Hash {
+        // a similar method to boost's hash_combine in order to combine hashes
+        inline void combine(std::size_t &hash, const unsigned int &val) const {
+            std::hash<unsigned int> hasher;
+            hash ^= hasher(val) + 0x9e3779b9 + (hash << 6) + (hash >> 2);
+        }
+        bess::utils::HashResult operator()(const FlowId &id) const {
+            std::size_t hash = 0;
+            combine(hash, id.src_addr);
+            combine(hash, id.dst_addr);
+            combine(hash, id.src_tp);
+            combine(hash, id.dst_tp);
+            combine(hash, (uint32_t)id.protocol);
+            return hash;
+        }
+    };
 
-  // to compare two FlowId for equality in a hash table
-  struct EqualTo {
-    bool operator()(const FlowId &id1, const FlowId &id2) const {
-      bool ips =
-          (id1.src_addr == id2.src_addr) && (id1.dst_addr == id2.dst_addr);
-      bool ports =
-          (id1.src_tp == id2.src_tp) && (id1.dst_tp == id2.dst_tp);
-      return (ips && ports) && (id1.protocol == id2.protocol);
-    }
-  };
+    // to compare two FlowId for equality in a hash table
+    struct EqualTo {
+        bool operator()(const FlowId &id1, const FlowId &id2) const {
+            bool ips =
+               (id1.src_addr == id2.src_addr) && (id1.dst_addr == id2.dst_addr);
+            bool ports =
+               (id1.src_tp == id2.src_tp) && (id1.dst_tp == id2.dst_tp);
+            return (ips && ports) && (id1.protocol == id2.protocol);
+        }
+    };
 };
 
 struct UserCentricNetworkTokenEntry {
-  uint32_t app_id;
-  std::string encryption_key;
-  std::list<uint64_t> blacklist;
-  uint32_t id;
-  uint8_t dscp;
+    uint32_t app_id;
+    std::string encryption_key;
+    std::list<uint64_t> blacklist;
+    uint32_t id;
+    uint8_t dscp;
+    uint32_t rule_id;
+    struct NtfFlowActionFlags flags;
 };
 
 class NTF final : public Module {
  public:
-  static const Commands cmds;
+    static const Commands cmds;
 
-  uint32_t dpid;
-  uint16_t max_token_entries;
-  
-  CommandResponse Init(const bess::pb::EmptyArg &arg);
+    uint32_t dpid;
+    uint16_t max_token_entries;
 
-  CommandResponse CommandTableCreate(const ntf::pb::NtfTableCreateArg &arg);
-  CommandResponse CommandTableDelete(const ntf::pb::NtfTableDeleteArg &arg);
-  CommandResponse CommandEntryCreate(const ntf::pb::NtfEntryCreateArg &arg);
-  CommandResponse CommandEntryModify(const ntf::pb::NtfEntryModifyArg &arg);
-  CommandResponse CommandEntryDelete(const ntf::pb::NtfEntryDeleteArg &arg);
+    CommandResponse Init(const bess::pb::EmptyArg &arg);
 
-  void ProcessBatch(Context*, bess::PacketBatch*) override;
+    CommandResponse CommandTableCreate(const ntf::pb::NtfTableCreateArg &arg);
+    CommandResponse CommandTableDelete(const ntf::pb::NtfTableDeleteArg &arg);
+    CommandResponse CommandEntryCreate(const ntf::pb::NtfEntryCreateArg &arg);
+    CommandResponse CommandEntryModify(const ntf::pb::NtfEntryModifyArg &arg);
+    CommandResponse CommandEntryDelete(const ntf::pb::NtfEntryDeleteArg &arg);
 
-  std::string GetDesc() const override;
+    void ProcessBatch(Context*, bess::PacketBatch*) override;
+
+    std::string GetDesc() const override;
 
  private:
-  using FlowTable = bess::utils::CuckooMap<
-    FlowId, NtfFlowEntry, Flow::Hash, Flow::EqualTo>;
-  using TokenTable = bess::utils::CuckooMap<
-    uint32_t, UserCentricNetworkTokenEntry>;
+    template<class T>
+    CommandResponse EntrySet(const T &arg);
 
-  // 5 minutes for entry expiration
-  static const uint64_t kTimeOutNs = 300ull * 1000 * 1000 * 1000;
-  std::set<uint8_t> authoritative_dscp_markings;
+    using FlowTable = bess::utils::CuckooMap<
+        FlowId, NtfFlowEntry, Flow::Hash, Flow::EqualTo>;
+    using TokenTable = bess::utils::CuckooMap<
+        uint32_t, UserCentricNetworkTokenEntry>;
 
-  FlowTable::Entry *CreateNewEntry(const Flow &flow, uint64_t now);
+    // 5 minutes for entry expiration
+    static const uint64_t kTimeOutNs = 300ull * 1000 * 1000 * 1000;
+    std::set<uint8_t> authoritative_dscp_markings;
 
-  /**
-   * Checks whether a packet contains a network token. 
-   * Currently looks at tokens encoded as STUN attributes. This function
-   * just detects tokens, but doesn't attempt to verify and/or evaluate them.
-   * 
-   * Returns pointer to the network token, or nullptr if no token found.
-   */ 
-  std::optional<NetworkToken> ExtractNetworkTokenFromPacket(bess::Packet *pkt);
+    FlowTable::Entry *CreateNewEntry(const Flow &flow, uint64_t now);
 
-  // Get  a flow id (5-tuple) from a packet. 
-  FlowId GetFlowId(bess::Packet *pkt);
+    /**
+     * Checks whether a packet contains a network token.
+     * Currently looks at tokens encoded as STUN attributes. This function
+     * just detects tokens, but doesn't attempt to verify and/or evaluate them.
+     *
+     * Returns pointer to the network token, or nullptr if no token found.
+     */
+    std::optional<NetworkToken>
+        ExtractNetworkTokenFromPacket(bess::Packet *pkt);
 
-  // Get a reverse flow id by swapping ip address and transport ports.
-  FlowId GetReverseFlowId(FlowId flow_id);
+    // Get    a flow id (5-tuple) from a packet.
+    FlowId GetFlowId(bess::Packet *pkt);
 
-  /**
-   * CheckPacketForNetworkToken performs all token-related functions for a
-   * packet.  It uses ExtractNetworkTokenFromPacket to detect token for a
-   * packet.  Verifies that this is a valid token and if so, evaluates it.  It
-   * installs the necessary state to apply desired actions (e.g., DSCP marking)
-   * for follow-up packets that belong to the same flow.
-   */
-  void CheckPacketForNetworkToken(Context *ctx, bess::Packet *pkt);
+    // Get a reverse flow id by swapping ip address and transport ports.
+    FlowId GetReverseFlowId(FlowId flow_id);
 
-  /**
-   * Resets the token-specific DSCP marking for flows that have not been
-   * whitelisted through a token.
-   */ 
-  void ResetDscpMarking(bess::Packet *pkt);
-  /**
-   * Sets the token-specific DSCP marking for flows that have been whitelisted
-   * through a token.
-   */
-  void SetDscpMarking(bess::Packet *pkt, uint8_t dscp);
+    /**
+     * CheckPacketForNetworkToken performs all token-related functions for a
+     * packet.  It uses ExtractNetworkTokenFromPacket to detect token for a
+     * packet.  Verifies that this is a valid token and if so, evaluates it.
+     * It installs the necessary state to apply desired actions (e.g., DSCP
+     * marking) for follow-up packets that belong to the same flow.
+     */
+    void CheckPacketForNetworkToken(Context *ctx, bess::Packet *pkt);
 
-  void UpdateAuthoritativeDscpMarkings();
+    /**
+     * Assuming *pkt points to a packet from a flow that has presented a valid
+     * network token, apply the actions within the given NtfFlowEntry.
+     */
+    void ApplyFlowActionsToPacket(bess::Packet *pkt,
+                                  const NtfFlowEntry &NtfFlowEntry);
 
-  // Per-flow soft state for flows already whitelisted by a token.
-  FlowTable flowMap_;
+    /**
+     * Resets the token-specific DSCP marking for flows that have not been
+     * whitelisted through a token.
+     */
+    void ResetDscpMarking(bess::Packet *pkt);
+    /**
+     * Sets the token-specific DSCP marking for flows that have been whitelisted
+     * through a token.
+     */
+    void SetDscpMarking(bess::Packet *pkt, uint8_t dscp);
 
-  // State for tokens.
-  TokenTable tokenMap_;
-  uint8_t kDSCP = 0;
+    void UpdateAuthoritativeDscpMarkings();
+
+    // Per-flow soft state for flows already whitelisted by a token.
+    FlowTable flowMap_;
+
+    // State for tokens.
+    TokenTable tokenMap_;
+
+    // Field for rule ID attribute
+    int rule_id_attr = -1;
 };
 
 #endif // BESS_MODULES_NTF_H_

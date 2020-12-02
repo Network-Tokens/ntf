@@ -7,12 +7,16 @@
 #define NTF_UTILS_NTE_H_
 
 #include <cjose/header.h>
+#include <stddef.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-json_t * nte_decrypt(const char * token_buf, const char * key_buf);
+json_t * nte_decrypt(const char * token_buf,
+                     size_t token_buf_len,
+                     const char * key_buf,
+                     size_t key_buf_len);
 
 #ifdef __cplusplus
 }

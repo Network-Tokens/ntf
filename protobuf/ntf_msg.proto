@@ -20,17 +20,26 @@ message UserCentricNetworkToken {
 message NtfEntryCreateArg {
 	uint32 dpid = 1;
 	UserCentricNetworkToken token = 2;
-	uint32 dscp = 3;
+	oneof set_dscp {
+		uint32 dscp = 3;
+	}
+	oneof set_rule_id {
+		uint32 rule_id = 4;
+	}
 }
 
 message NtfEntryModifyArg {
 	uint32 dpid = 1;
 	UserCentricNetworkToken token = 2;
-	uint32 dscp = 3;
+	oneof set_dscp {
+		uint32 dscp = 3;
+	}
+	oneof set_rule_id {
+		uint32 rule_id = 4;
+	}
 }
 
 message NtfEntryDeleteArg {
 	uint32 dpid = 1;
 	uint32 app_id = 2;
 }
-	
