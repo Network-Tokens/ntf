@@ -321,39 +321,43 @@ void NTF::CheckPacketForNetworkToken(Context *ctx, bess::Packet *pkt) {
         return;
     }
 
-    uint64_t exp_ns = json_integer_value(json_object_get(_token, "exp"))*1e9;
-    std::string bound_ip = json_string_value(json_object_get(_token,"bip"));
-    be32_t bound_address;
-    if (exp_ns < ctx->current_ns) {
-        DLOG(WARNING) << "Detected token is expired --- ignoring...";
-        return;
-    }
-    if (!ParseIpv4Address(bound_ip, &bound_address)) {
-        DLOG(WARNING) << "Detected token does not have a valid bound IP address --- ignoring...";
-        return;
-    }
+    do {
+        uint64_t exp_ns = json_integer_value(json_object_get(_token, "exp"))*1e9;
+        std::string bound_ip = json_string_value(json_object_get(_token,"bip"));
+        be32_t bound_address;
+        if (exp_ns < ctx->current_ns) {
+            DLOG(WARNING) << "Detected token is expired --- ignoring...";
+            break;
+        }
+        if (!ParseIpv4Address(bound_ip, &bound_address)) {
+            DLOG(WARNING) << "Detected token does not have a valid bound IP address --- ignoring...";
+            break;
+        }
 
-    // We have the expiration time and bound ip for this token. Now we need to
-    // check if the bound ip matches ip source or destination.
-    Ipv4 *ip = pkt->head_data<Ipv4 *>(sizeof(Ethernet));
-    if ((bound_address != ip->src) && (bound_address != ip->dst)) {
-        DLOG(WARNING) << "Detected token is bound to an IP other than source and destination (BIP:" <<
-            ToIpv4Address(bound_address) << " SRCIP:" << ToIpv4Address(ip->src) << " DSTIP:" << ToIpv4Address(ip->dst);
-        return;
-    }
+        // We have the expiration time and bound ip for this token. Now we need to
+        // check if the bound ip matches ip source or destination.
+        Ipv4 *ip = pkt->head_data<Ipv4 *>(sizeof(Ethernet));
+        if ((bound_address != ip->src) && (bound_address != ip->dst)) {
+            DLOG(WARNING) << "Detected token is bound to an IP other than source and destination (BIP:" <<
+                ToIpv4Address(bound_address) << " SRCIP:" << ToIpv4Address(ip->src) << " DSTIP:" << ToIpv4Address(ip->dst);
+            break;
+        }
 
-    // if we made it that far, this is a valid token and we should take action.
-    new_ntf_flow.last_refresh = ctx->current_ns;
-    new_ntf_flow.dscp = hash_item->second.dscp;
-    new_ntf_flow.flags = hash_item->second.flags;
-    flow_id = GetFlowId(pkt);
-    reverse_flow_id = GetReverseFlowId(flow_id);
-    flowMap_.Insert(flow_id, new_ntf_flow);
-    flowMap_.Insert(reverse_flow_id, new_ntf_flow);
+        // if we made it that far, this is a valid token and we should take action.
+        new_ntf_flow.last_refresh = ctx->current_ns;
+        new_ntf_flow.dscp = hash_item->second.dscp;
+        new_ntf_flow.flags = hash_item->second.flags;
+        flow_id = GetFlowId(pkt);
+        reverse_flow_id = GetReverseFlowId(flow_id);
+        flowMap_.Insert(flow_id, new_ntf_flow);
+        flowMap_.Insert(reverse_flow_id, new_ntf_flow);
 
-    DLOG(WARNING) << "Verified token with app-id 0x" << std::hex << token->app_id
-                  << " --- marking packets with DSCP 0x"
-                  << (uint16_t) new_ntf_flow.dscp << std::dec;
+        DLOG(WARNING) << "Verified token with app-id 0x" << std::hex << token->app_id
+                      << " --- marking packets with DSCP 0x"
+                      << (uint16_t) new_ntf_flow.dscp << std::dec;
+    } while(0);
+
+    json_decref( _token );
 }
 
 void NTF::ResetDscpMarking(bess::Packet *pkt) {
