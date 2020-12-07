@@ -1,8 +1,16 @@
 #include <errno.h>
 #include "ntf_api.h"
+#include "ntf_context.hpp"
 
 
 extern "C" {
+
+typedef struct ntf_context_t {
+    ntf_context_t( size_t max_token_entries )
+        : ctx( max_token_entries ) {}
+
+    NtfContext ctx;
+} ntf_context_t;
 
 /**
  * Create a new NTF context.
@@ -10,7 +18,7 @@ extern "C" {
 ntf_context_t *
 ntf_context_new( size_t max_token_entries )
 {
-    return nullptr;
+    return new ntf_context_t( max_token_entries );
 }
 
 
@@ -18,8 +26,9 @@ ntf_context_new( size_t max_token_entries )
  * Releases an NTF context
  */
 void
-ntf_context_delete( ntf_context_t * ctx )
+ntf_context_delete( ntf_context_t * ptr )
 {
+    delete ptr;
 }
 
 
@@ -28,14 +37,13 @@ ntf_context_delete( ntf_context_t * ctx )
  * tokens for this application/service type.
  */
 int
-ntf_context_app_add( ntf_context_t *  ctx,
+ntf_context_app_add( ntf_context_t *  ptr,
                      token_app_id_t   token_app_id,
                      const void *     key,
                      size_t           key_len,
                      dscp_t           dscp )
 {
-    errno = ENOTSUP;
-    return -1;
+    return ptr->ctx.AddApplication( token_app_id, key, key_len, dscp );
 }
 
 
@@ -44,10 +52,10 @@ ntf_context_app_add( ntf_context_t *  ctx,
  */
 int
 ntf_context_app_modify( ntf_context_t *  ctx,
-                       token_app_id_t   token_app_id,
-                       const void *     key,
-                       size_t           key_len,
-                       dscp_t           dscp )
+                        token_app_id_t   token_app_id,
+                        const void *     key,
+                        size_t           key_len,
+                        dscp_t           dscp )
 {
     errno = ENOTSUP;
     return -1;

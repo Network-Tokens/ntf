@@ -8,7 +8,7 @@ include_directories(
 )
 
 set(CMAKE_C_FLAGS "-g3 -ggdb -O0")
-set(CMAKE_CXX_FLAGS "-g3 -ggdb -O0")
+set(CMAKE_CXX_FLAGS "-g3 -ggdb -O0 -std=c++17")
 
 add_subdirectory(api)
 add_subdirectory(utils)
