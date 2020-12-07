@@ -81,7 +81,18 @@ public:
                         size_t         key_len,
                         dscp_t         dscp );
 
+    token_app_id_t ProcessPacket( void *   data,
+                                  size_t   length,
+                                  uint64_t now );
+
 private:
+    void CheckPacketForNetworkToken( const void * data,
+                                     size_t       length,
+                                     uint64_t     current_ns );
+
+    void SetDscpMarking( void * data, size_t length, uint8_t dscp );
+    void ResetDscpMarking( void * data, size_t length );
+
     // Recalculate authoritative_dscp_markings from the tokens in tokenMap_
     void UpdateAuthoritativeDscpMarkings();
 

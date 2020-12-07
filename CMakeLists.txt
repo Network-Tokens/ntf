@@ -7,8 +7,10 @@ include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
-set(CMAKE_C_FLAGS "-g3 -ggdb -O0")
-set(CMAKE_CXX_FLAGS "-g3 -ggdb -O0 -std=c++17")
+add_definitions(-DCPU=native)
+
+set(CMAKE_C_FLAGS "-g3 -ggdb -O0 -march=native")
+set(CMAKE_CXX_FLAGS "-g3 -ggdb -O0 -std=c++17 -march=native")
 
 add_subdirectory(api)
 add_subdirectory(utils)

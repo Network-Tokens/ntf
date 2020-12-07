@@ -6,7 +6,7 @@
 #ifndef NTF_UTILS_STUN_H_
 #define NTF_UTILS_STUN_H_
 
-#include "endian.h"
+#include "utils/endian.h"
 
 using bess::utils::be16_t;  
 using bess::utils::be32_t;  

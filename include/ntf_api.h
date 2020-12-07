@@ -116,8 +116,8 @@ ntf_context_app_remove( ntf_context_t *  ctx,
  * the packet and no state exists for this flow.
  */
 token_app_id_t
-ntf_process_packet( const ntf_context_t *  ctx,
-                    const void *           data,
+ntf_process_packet( ntf_context_t *        ctx,
+                    void *                 data,
                     size_t                 length,
                     uint64_t               now );
 

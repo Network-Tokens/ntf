@@ -17,7 +17,7 @@ TEST(NtfContextUsage) {
         ETHERNET_HEADER + IPV4_HEADER + UDP_HEADER + STUN_PACKET );
 
     token_app_id_t app_id = ntf_process_packet(
-            ctx, stun_packet.data(), stun_packet.size(), 0 );
+            ctx, (char*) stun_packet.data(), stun_packet.size(), 0 );
 
     CHECK_EQUAL( 0xB00F, app_id );
 

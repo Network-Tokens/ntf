@@ -79,12 +79,12 @@ ntf_context_app_remove( ntf_context_t *  ctx,
  * Process a raw packet.
  */
 token_app_id_t
-ntf_process_packet( const ntf_context_t *  ctx,
-                    const void *           data,
+ntf_process_packet( ntf_context_t *        ptr,
+                    void *                 data,
                     size_t                 length,
                     uint64_t               now )
 {
-    return 0;
+    return ptr->ctx.ProcessPacket( data, length, now );
 }
 
 
