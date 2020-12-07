@@ -13,8 +13,8 @@ include_directories(
 add_library(api ${NTF_API_SRCS})
 target_link_libraries( api
     ${CMAKE_CURRENT_SOURCE_DIR}/../../bess/core/bess.a
-    ${CMAKE_CURRENT_SOURCE_DIR}/../../bess/deps/dpdk-19.11.4/build/lib/libdpdk.a
     -rdynamic -L/opt/bess/deps/dpdk-19.11.4/build/lib
+    -ldpdk
     -Wl,-rpath=/opt/bess/deps/dpdk-19.11.4/build/lib
     glog gflags pthread dl protobuf numa
 )
