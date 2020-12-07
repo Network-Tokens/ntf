@@ -1,6 +1,13 @@
 #ifndef _NTF_API_H_
 #define _NTF_API_H_
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#include <stddef.h>
+#include <stdint.h>
+
 /**
  * NTF context - maintains information about flows, keys and other internal
  * state.
@@ -78,7 +85,7 @@ ntf_context_app_modify( ntf_context_t *  ctx,
 
 
 /**
- * Removes an application from an NTF context..
+ * Removes an application from an NTF context.
  * \param ctx NTF context
  * \param token_app_id The app ID to remove
  * \return 0 on success, otherwise returns -1, with the reason in errno.
@@ -114,4 +121,8 @@ ntf_process_packet( const ntf_context_t *  ctx,
                     size_t                 length,
                     uint64_t               now );
 
+#ifdef __cplusplus
+} // extern "C"
 #endif
+
+#endif // _NTF_API_H_
