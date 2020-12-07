@@ -51,11 +51,11 @@ ntf_context_app_add( ntf_context_t *  ptr,
  * Updates an application already added to an NTF context.
  */
 int
-ntf_context_app_modify( ntf_context_t *  ctx,
-                        token_app_id_t   token_app_id,
-                        const void *     key,
-                        size_t           key_len,
-                        dscp_t           dscp )
+ntf_context_app_modify( ntf_context_t *  /* ctx */,
+                        token_app_id_t   /* token_app_id */,
+                        const void *     /* key */,
+                        size_t           /* key_len */,
+                        dscp_t           /* dscp */ )
 {
     errno = ENOTSUP;
     return -1;
@@ -67,8 +67,8 @@ ntf_context_app_modify( ntf_context_t *  ctx,
  * Removes an application from an NTF context.
  */
 int
-ntf_context_app_remove( ntf_context_t *  ctx,
-                        token_app_id_t   token_app_id )
+ntf_context_app_remove( ntf_context_t *  /* ctx */,
+                        token_app_id_t   /* token_app_id */ )
 {
     errno = ENOTSUP;
     return -1;

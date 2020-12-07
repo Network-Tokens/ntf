@@ -42,6 +42,8 @@ struct NetworkTokenHeader {
 FlowId
 GetFlowId( const uint8_t* data, size_t length )
 {
+    DCHECK( length > sizeof(Ethernet) + sizeof(Ipv4) + sizeof(Udp) );
+
     // TODO: This should support Layer-3 packets but right now requires a
     // packet with an Ethernet header to work properly.
     const Ipv4 *ip = (const Ipv4*)(const uint8_t*)( data + sizeof(Ethernet) );
@@ -90,6 +92,14 @@ NtfContext::AddApplication( token_app_id_t app_id,
     entry.dscp = dscp;
     // TODO: Something about entry.blacklist...
 
+    if (!tokenMap_.Insert(entry.app_id, entry)) {
+        errno = EAGAIN;
+        LOG(WARNING) << "Failed to insert entry";
+        return -1;
+    }
+
+    DLOG(WARNING) << "Entry inserted for 0x" << std::hex << entry.app_id << std::dec;
+
     UpdateAuthoritativeDscpMarkings();
     errno = 0;
     return 0;
@@ -121,9 +131,6 @@ NtfContext::ProcessPacket( void *   data,
     auto *hash_item = flowMap_.Find( flow_id );
     auto *hash_reverse_item = flowMap_.Find( reverse_flow_id );
 
-    (void) hash_item;
-    (void) hash_reverse_item;
-
     if (hash_item == nullptr) {
         ResetDscpMarking( data, length );
         return 0;
@@ -153,7 +160,7 @@ ExtractNetworkTokenFromPacket( const uint8_t * data, size_t length )
 {
     // The packet should be an Ethernet frame
     size_t offset = 0;
-    const Ethernet *eth = (const Ethernet*) data + sizeof( Ethernet );
+    const Ethernet *eth = (const Ethernet*)( data + offset );
     if (eth->ether_type.value() == Ethernet::Type::kIpv4) {
         offset += sizeof(Ethernet);
     } else {
@@ -161,14 +168,14 @@ ExtractNetworkTokenFromPacket( const uint8_t * data, size_t length )
     }
 
     // Ensure this is a UDP packet.
-    const Ipv4 *ip = (const Ipv4*) data + offset;
+    const Ipv4 *ip = (const Ipv4*)( data + offset );
     if (ip->protocol != IpProto::kUdp) {
         return {};
     }
     offset += (ip->header_length << 2);
 
     // Ensure UDP packet has payload.
-    const Udp *udp = (const Udp*) data + offset;
+    const Udp *udp = (const Udp*)( data + offset );
 
     // For this to be a STUN message with an attribute, it needs to be > 28
     // bytes 8 bytes for UDP header and 20 bytes for STUN message, and more for
@@ -182,7 +189,7 @@ ExtractNetworkTokenFromPacket( const uint8_t * data, size_t length )
 
     // Try to interpret this as a STUN message. Is it a valid STUN message
     // length?  TODO(@yiannis): check that message type is also valid.
-    const Stun *stun = (const Stun*) data + offset;
+    const Stun *stun = (const Stun*)( data + offset );
     if (stun->message_length.value() != udp->length.value() - STUN_PACKET_MIN) {
         return {};
     }
@@ -190,8 +197,7 @@ ExtractNetworkTokenFromPacket( const uint8_t * data, size_t length )
     size_t remaining_bytes = stun->message_length.value();
 
     const uint8_t * next_attribute = reinterpret_cast<const uint8_t*> (stun + 1);
-    const size_t stun_msg_length = stun->message_length.value();
-    const uint8_t * end = reinterpret_cast<const uint8_t*>(stun) + stun_msg_length;
+    const uint8_t * end = data + length;
 
     while(next_attribute < end) {
         const StunAttribute * attribute = reinterpret_cast<const StunAttribute *>(next_attribute);
@@ -245,7 +251,6 @@ NtfContext::CheckPacketForNetworkToken( const void * data,
         return;
     }
 
-    NtfFlowEntry new_ntf_flow;
     json_t * _token = nte_decrypt(token->payload.data(),
                                   token->payload.size(),
                                   hash_item->second.encryption_key.data(),
@@ -278,6 +283,8 @@ NtfContext::CheckPacketForNetworkToken( const void * data,
         }
 
         // if we made it that far, this is a valid token and we should take action.
+        NtfFlowEntry new_ntf_flow;
+        new_ntf_flow.app_id = token->app_id;
         new_ntf_flow.last_refresh = current_ns;
         new_ntf_flow.dscp = hash_item->second.dscp;
         flow_id = GetFlowId( (const uint8_t*) data, length );
@@ -298,6 +305,7 @@ void
 NtfContext::ResetDscpMarking( void * data, size_t length )
 {
     DLOG(INFO) << __FUNCTION__;
+    DCHECK( length > sizeof(Ethernet) + sizeof(Ipv4) );
 
     Ipv4 *ip = (Ipv4*)( (uint8_t*) data + sizeof(Ethernet) );
     // Do nothing if TOS is 0.
@@ -317,6 +325,8 @@ NtfContext::ResetDscpMarking( void * data, size_t length )
 void
 NtfContext::SetDscpMarking( void * data, size_t length, uint8_t dscp )
 {
+    DCHECK( length > sizeof(Ethernet) + sizeof(Ipv4) );
+
     Ipv4 *ip = (Ipv4*)( (uint8_t*) data + sizeof(Ethernet) );
     ip->type_of_service = dscp;
 }
