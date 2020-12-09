@@ -84,7 +84,7 @@ PcapSource::CommandLoad(const PcapSourceArg &args) {
     first_packet_ns = 0;
 
     LOG(INFO) << "PcapSource::Load(): Loaded " << args.filename() << ", "
-                             "link_type: " << pcap_datalink_val_to_name(link_type);
+                 "link_type: " << pcap_datalink_val_to_name(link_type);
     return CommandSuccess();
 }
 

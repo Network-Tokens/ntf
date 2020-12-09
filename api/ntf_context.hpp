@@ -85,6 +85,9 @@ public:
                                   size_t   length,
                                   uint64_t now );
 
+    size_t ApplicationCount() const { return tokenMap_.Count(); }
+    size_t WhitelistCount() const   { return flowMap_.Count(); }
+
 private:
     void CheckPacketForNetworkToken( const void * data,
                                      size_t       length,

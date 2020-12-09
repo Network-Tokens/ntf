@@ -15,7 +15,6 @@
 #include "utils/ip.h"
 #include "utils/stun.h"
 #include "utils/udp.h"
-#include "utils/nte.h"
 
 
 using bess::utils::be16_t;
@@ -208,7 +207,11 @@ void NTF::ProcessBatch(Context *ctx, bess::PacketBatch *batch) {
 }
 
 std::string NTF::GetDesc() const {
-    return bess::utils::Format("TODO: HELPFUL INFO HERE");
+    return bess::utils::Format(
+        "%zu keys, %zu whitelisted flows",
+        ntf_context_app_count( ntf_ctx ),
+        ntf_context_whitelist_count( ntf_ctx )
+    );
 }
 
 ADD_MODULE(NTF, "ntf", "interprets network tokens and enforces appropriate action")

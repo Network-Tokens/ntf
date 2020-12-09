@@ -3,7 +3,6 @@
 #include <jansson.h>
 #include "ntf_context.hpp"
 #include "utils/stun.h"
-#include "utils/nte.h"
 
 // From BESS
 #include "packet.h"
@@ -11,6 +10,9 @@
 #include "utils/ether.h"
 #include "utils/ip.h"
 #include "utils/udp.h"
+
+#undef DLOG
+#define DLOG LOG
 
 
 using IpProto = bess::utils::Ipv4::Proto;
@@ -207,7 +209,10 @@ ExtractNetworkTokenFromPacket( const uint8_t * data, size_t length )
 
             token.app_id = token_header->header.value() & 0x0FFFFFFF;
             token.reflect_type = (token_header->header.value() & 0xF0000000) >> 28;
-            token.payload = std::string(token_header->payload,attribute->length.value());
+            token.payload = std::string(
+                token_header->payload,
+                attribute->length.value() - sizeof(token_header->header)
+            );
             return { token };
         }
 
@@ -251,10 +256,11 @@ NtfContext::CheckPacketForNetworkToken( const void * data,
         return;
     }
 
-    json_t * _token = nte_decrypt(token->payload.data(),
-                                  token->payload.size(),
-                                  hash_item->second.encryption_key.data(),
-                                  hash_item->second.encryption_key.size());
+    json_t * _token = ntf_token_decrypt(
+            token->payload.data(),
+            token->payload.size(),
+            hash_item->second.encryption_key.data(),
+            hash_item->second.encryption_key.size() );
     if (!_token) {
         DLOG(WARNING) << "NTE Decrypt did not find a valid token";
         return;

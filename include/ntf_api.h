@@ -1,12 +1,14 @@
 #ifndef _NTF_API_H_
 #define _NTF_API_H_
 
+#include <cjose/header.h>
+#include <stddef.h>
+#include <stdint.h>
+
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include <stddef.h>
-#include <stdint.h>
 
 /**
  * NTF context - maintains information about flows, keys and other internal
@@ -120,6 +122,44 @@ ntf_process_packet( ntf_context_t *        ctx,
                     void *                 data,
                     size_t                 length,
                     uint64_t               now );
+
+/**
+ * Returns the number of token keys that have been registered with this NTF
+ * context.
+ * \param ctx NTF context
+ * \return Number of application keys that have been registered with this NTF
+ */
+size_t
+ntf_context_app_count( const ntf_context_t * ctx );
+
+
+/**
+ * Returns the number of flows that have presented a valid network token and
+ * are currently white-listed.
+ * \param ctx NTF context
+ * \return Number of flows currently whitelisted
+ */
+size_t
+ntf_context_whitelist_count( const ntf_context_t * ctx );
+
+
+/**
+ * Decrypts a raw token using a key.  If the provided key was used to generate
+ * the token and the token is valid, the payload is returned as a JSON object.
+ * If the key or token are invalid, nullptr is returned.
+ * \param token_buf Pointer to raw token data
+ * \param token_bu_len The length of the buffer at token_buf
+ * \param key_buf Pointer to raw key data (JSON string)
+ * \param key_buf_len The length of the buffer at key_buf
+ * \return JSON object containing decrypted payload, or nullptr if the key or
+ * token are invalid.
+ */
+json_t *
+ntf_token_decrypt( const char * token_buf,
+                   size_t       token_buf_len,
+                   const char * key_buf,
+                   size_t       key_buf_len );
+
 
 #ifdef __cplusplus
 } // extern "C"

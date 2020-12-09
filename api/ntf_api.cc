@@ -88,4 +88,25 @@ ntf_process_packet( ntf_context_t *        ptr,
 }
 
 
+/**
+ * Returns the number of token keys that have been registered with this NTF
+ * context.
+ */
+size_t
+ntf_context_app_count( const ntf_context_t * ptr )
+{
+    return ptr->ctx.ApplicationCount();
+}
+
+
+/**
+ * Returns the number of flows that have presented a valid network token and
+ * are currently white-listed.
+ */
+size_t
+ntf_context_whitelist_count( const ntf_context_t * ptr )
+{
+    return ptr->ctx.WhitelistCount();
+}
+
 } // extern "C"
