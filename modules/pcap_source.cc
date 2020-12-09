@@ -28,6 +28,29 @@ PcapSource::Init(const PcapSourceArg &args) {
     return CommandLoad(args);
 }
 
+static bool
+TryParseAddress( const std::string& ip,
+                 std::string& ip4_out,
+                 std::string& ip6_out )
+{
+    // First try parsing as IPv4
+    be32_t addr;
+    if (ParseIpv4Address(ip, &addr)) {
+        const char *data = reinterpret_cast<const char *>(&addr);
+        ip4_out = std::string(data, sizeof(addr));
+        return true;
+    }
+
+    // ... then IPv6
+    struct in6_addr addr6;
+    if (inet_pton(AF_INET6, ip.c_str(), &addr6) == 1) {
+        const char *data = reinterpret_cast<const char*>(addr6.s6_addr);
+        ip6_out = std::string(data, sizeof(addr6.s6_addr));
+    }
+
+    return false;
+}
+
 CommandResponse
 PcapSource::CommandLoad(const PcapSourceArg &args) {
     if (pcap) {
@@ -35,25 +58,27 @@ PcapSource::CommandLoad(const PcapSourceArg &args) {
         pcap = nullptr;
     }
 
-    // First try parsing as IPv4
+    reverse = args.reverse();
+
     for(const auto& src_ip : args.src_ip()) {
-        be32_t addr;
-        if (ParseIpv4Address(src_ip, &addr)) {
-            const char *data = reinterpret_cast<const char *>(&addr);
-            src_addr = std::string(data, sizeof(addr));
-        } else {
-            // ... then IPv6
-            struct in6_addr addr6;
-            if (inet_pton(AF_INET6, src_ip.c_str(), &addr6) == 1) {
-                const char *data = reinterpret_cast<const char*>(addr6.s6_addr);
-                src_addr6 = std::string(data, sizeof(addr6.s6_addr));
-            } else {
-                return CommandFailure(errno, "Invalid IP address: %s", src_ip.c_str());
-            }
+        if( !TryParseAddress( src_ip, src_addr, src_addr6 ) ) {
+            return CommandFailure(errno, "Invalid IP address: %s", src_ip.c_str());
         }
     }
 
-    reverse = args.reverse();
+    for(const auto& rewrite_src : args.rewrite_src()) {
+        if( !TryParseAddress( rewrite_src, rewrite_src_addr, rewrite_src_addr6 ) ) {
+            return CommandFailure(errno, "Invalid IP address: %s", rewrite_src.c_str());
+        }
+        rewrite_any = true;
+    }
+
+    for(const auto& rewrite_dst : args.rewrite_dst()) {
+        if( !TryParseAddress( rewrite_dst, rewrite_dst_addr, rewrite_dst_addr6 ) ) {
+            return CommandFailure(errno, "Invalid IP address: %s", rewrite_dst.c_str());
+        }
+        rewrite_any = true;
+    }
 
     char errbuf[PCAP_ERRBUF_SIZE];
     pcap = pcap_open_offline(args.filename().c_str(), errbuf);
@@ -162,6 +187,51 @@ PcapSource::PrepareNextPacket() {
     size -= copy_len;
     if (size > 0) {
         DLOG(WARNING) << "TODO: sending packets too fast...";
+    }
+
+    // Check to see if we should rewrite the source and/or destination address
+    if (rewrite_any) {
+        size_t offset = 0;
+        Ethernet *eth = (Ethernet*)( ptr + offset );
+        if (eth->ether_type.value() == Ethernet::Type::kIpv4) {
+            offset += sizeof(Ethernet);
+        }
+
+        Ipv4 *ip = (Ipv4*)( ptr + offset );
+        if (ip->version == 4) {
+            const size_t SRC_OFFSET = 12;
+            const size_t DST_OFFSET = 16;
+            char* addr = ptr + offset + SRC_OFFSET;
+            char* other_addr = ptr + offset + DST_OFFSET;
+            if (reverse) {
+                std::swap( addr, other_addr );
+            }
+            if (0 == memcmp(addr, src_addr.data(), src_addr.size())) {
+                if (rewrite_src_addr.size()) {
+                    memcpy(addr, rewrite_src_addr.data(), rewrite_src_addr.size());
+                }
+                if (rewrite_dst_addr.size()) {
+                    memcpy(other_addr, rewrite_dst_addr.data(), rewrite_dst_addr.size());
+                }
+            }
+        }
+        else if (ip->version == 6) {
+            const size_t SRC_OFFSET = 8;
+            const size_t DST_OFFSET = 24;
+            if (rewrite_src_addr6.size() == src_addr6.size()) {
+                char* addr6 = ptr + offset + (reverse ? DST_OFFSET : SRC_OFFSET);
+                if (0 == memcmp(addr6, src_addr6.data(), src_addr6.size())) {
+                    memcpy(addr6, rewrite_src_addr6.data(), rewrite_src_addr6.size());
+                }
+            }
+            if (rewrite_dst_addr6.size()) {
+                char* addr6 = ptr + offset + (reverse ? DST_OFFSET : SRC_OFFSET);
+                char* other_addr6 = ptr + offset + (reverse ? SRC_OFFSET : DST_OFFSET);
+                if (0 == memcmp(addr6, src_addr6.data(), src_addr6.size())) {
+                    memcpy(other_addr6, rewrite_dst_addr6.data(), rewrite_dst_addr6.size());
+                }
+            }
+        }
     }
     return pkt;
 }
