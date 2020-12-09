@@ -11,9 +11,6 @@
 #include "utils/ip.h"
 #include "utils/udp.h"
 
-#undef DLOG
-#define DLOG LOG
-
 
 using IpProto = bess::utils::Ipv4::Proto;
 using bess::utils::Ethernet;

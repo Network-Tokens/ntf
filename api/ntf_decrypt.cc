@@ -9,17 +9,13 @@
 #include <cjose/jwk.h>
 #include <glog/logging.h>
 #include <jansson.h>
-#include <string.h>
 
-#undef DLOG
-#define DLOG LOG
 
-extern "C" {
-
-json_t * ntf_token_decrypt( const char * token_buf,
-                            size_t       token_buf_len,
-                            const char * key_buf,
-                            size_t       key_buf_len )
+extern "C" json_t *
+ntf_token_decrypt( const char * token_buf,
+                   size_t       token_buf_len,
+                   const char * key_buf,
+                   size_t       key_buf_len )
 {
     json_t *ret( nullptr );
     cjose_jwe_t *jwe( nullptr );
@@ -61,5 +57,3 @@ json_t * ntf_token_decrypt( const char * token_buf,
 
     return ret;
 }
-
-} // extern "C"
