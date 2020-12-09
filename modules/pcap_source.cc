@@ -218,16 +218,16 @@ PcapSource::PrepareNextPacket() {
         else if (ip->version == 6) {
             const size_t SRC_OFFSET = 8;
             const size_t DST_OFFSET = 24;
-            if (rewrite_src_addr6.size() == src_addr6.size()) {
-                char* addr6 = ptr + offset + (reverse ? DST_OFFSET : SRC_OFFSET);
-                if (0 == memcmp(addr6, src_addr6.data(), src_addr6.size())) {
+            char* addr6 = ptr + offset + SRC_OFFSET;
+            char* other_addr6 = ptr + offset + DST_OFFSET;
+            if (reverse) {
+                std::swap( addr6, other_addr6 );
+            }
+            if (0 == memcmp(addr6, src_addr6.data(), src_addr6.size())) {
+                if (rewrite_src_addr6.size()) {
                     memcpy(addr6, rewrite_src_addr6.data(), rewrite_src_addr6.size());
                 }
-            }
-            if (rewrite_dst_addr6.size()) {
-                char* addr6 = ptr + offset + (reverse ? DST_OFFSET : SRC_OFFSET);
-                char* other_addr6 = ptr + offset + (reverse ? SRC_OFFSET : DST_OFFSET);
-                if (0 == memcmp(addr6, src_addr6.data(), src_addr6.size())) {
+                if (rewrite_dst_addr6.size()) {
                     memcpy(other_addr6, rewrite_dst_addr6.data(), rewrite_dst_addr6.size());
                 }
             }
