@@ -28,7 +28,8 @@ static const uint64_t kTimeOutNs = 300ull * 1000 * 1000 * 1000;
 struct NetworkToken {
     uint8_t reflect_type;
     uint32_t app_id;
-    std::string payload;
+    const char * payload;
+    size_t payload_len;
 };
 
 
@@ -213,10 +214,9 @@ ExtractNetworkTokenFromPacket( const uint8_t * data, size_t length )
 
             token.app_id = token_header->header.value() & 0x0FFFFFFF;
             token.reflect_type = (token_header->header.value() & 0xF0000000) >> 28;
-            token.payload = std::string(
-                token_header->payload,
-                attribute->length.value() - sizeof(token_header->header)
-            );
+            token.payload = token_header->payload;
+            token.payload_len = attribute->length.value() -
+                sizeof(token_header->header);
             return { token };
         }
 
@@ -261,9 +261,7 @@ NtfContext::CheckPacketForNetworkToken( const void * data,
     }
 
     json_t * _token = ntf_token_decrypt(
-            token->payload.data(),
-            token->payload.size(),
-            hash_item->second.jwk );
+            token->payload, token->payload_len, hash_item->second.jwk );
     if (!_token) {
         DLOG(WARNING) << "NTE Decrypt did not find a valid token";
         return;
