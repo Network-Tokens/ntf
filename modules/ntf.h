@@ -40,7 +40,7 @@
 
 #include "utils/cuckoo_map.h"
 #include "utils/endian.h"
-#include "ntf_api.h"
+#include "utils/ntf_api.h"
 
 using bess::utils::be32_t;
 
