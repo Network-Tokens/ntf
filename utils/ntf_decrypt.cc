@@ -10,9 +10,6 @@
 #include <glog/logging.h>
 #include <jansson.h>
 
-#undef DLOG
-#define DLOG LOG
-
 
 extern "C" json_t *
 ntf_token_decrypt( const char *        token_buf,
