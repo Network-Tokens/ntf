@@ -2,6 +2,7 @@
 #define _NTF_API_H_
 
 #include <cjose/header.h>
+#include <cjose/jwk.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -149,16 +150,14 @@ ntf_context_whitelist_count( const ntf_context_t * ctx );
  * If the key or token are invalid, nullptr is returned.
  * \param token_buf Pointer to raw token data
  * \param token_bu_len The length of the buffer at token_buf
- * \param key_buf Pointer to raw key data (JSON string)
- * \param key_buf_len The length of the buffer at key_buf
+ * \param key Pointer to the JWK used to create the token
  * \return JSON object containing decrypted payload, or nullptr if the key or
  * token are invalid.
  */
 json_t *
-ntf_token_decrypt( const char * token_buf,
-                   size_t       token_buf_len,
-                   const char * key_buf,
-                   size_t       key_buf_len );
+ntf_token_decrypt( const char *        token_buf,
+                   size_t              token_buf_len,
+                   const cjose_jwk_t * key );
 
 
 #ifdef __cplusplus

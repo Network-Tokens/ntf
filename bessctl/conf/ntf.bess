@@ -2,8 +2,6 @@
 # Copyright(c) 2020 Selfie Networks, Inc
 
 src_ip = ["172.31.0.3"]
-rewrite_src = ["16.0.0.1"]
-rewrite_dst = ["6.6.6.6"]
 
 pcap_file = "/opt/ntf/pcap-samples/network-token-sample.pcap"
 
@@ -14,8 +12,7 @@ ntf.entry_create(dpid=1, dscp=0x1a, rule_id=0xbeefb00f, token={
   'encryption_key': '{"alg":"A128CBC-HS256","k":"Qr_XwDGctna3SlR88rEJYt6Zm100SASYeJWSJihDnsA","kty":"oct"}'
 })
 
-p_up::PcapSource(filename=pcap_file, src_ip=src_ip, reverse=False,
-        rewrite_src=rewrite_src, rewrite_dst=rewrite_dst) \
+p_up::PcapSource(filename=pcap_file, src_ip=src_ip, reverse=False) \
    -> merge::Merge() \
    -> GenericEncap(fields=[
         {'size': 6, 'value': {'value_int': 0x000000000000}},
@@ -26,8 +23,7 @@ p_up::PcapSource(filename=pcap_file, src_ip=src_ip, reverse=False,
    -> IPChecksum() \
    -> sink::Sink()
 
-p_down::PcapSource(filename=pcap_file, src_ip=src_ip, reverse=True,
-        rewrite_src=rewrite_src, rewrite_dst=rewrite_dst) \
+p_down::PcapSource(filename=pcap_file, src_ip=src_ip, reverse=True) \
   -> merge
 
 open('/tmp/uplink.pcap','w').close()

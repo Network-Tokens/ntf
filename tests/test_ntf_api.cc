@@ -1,5 +1,5 @@
 #include <UnitTest++/UnitTest++.h>
-#include "ntf_api.h"
+#include "utils/ntf_api.h"
 #include "test_packets.h"
 
 
@@ -20,8 +20,11 @@ TEST(NtfContextUsage) {
     const std::string stun_packet(
         ETHERNET_HEADER + IPV4_HEADER + UDP_HEADER + STUN_PACKET );
 
-    token_app_id_t app_id = ntf_process_packet(
-            ctx, (char*) stun_packet.data(), stun_packet.size(), 0 );
+    token_app_id_t app_id;
+    for(unsigned i = 0; i < 1; ++i) {
+        app_id = ntf_process_packet(
+                ctx, (char*) stun_packet.data(), stun_packet.size(), 0 );
+    }
 
     // We should have detected the token app ID from the packet correctly
     // (TODO: this will become the service ID)

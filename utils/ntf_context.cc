@@ -85,9 +85,16 @@ NtfContext::AddApplication( token_app_id_t app_id,
         return -1;
     }
 
+    cjose_err error;
+    cjose_jwk_t *jwk = cjose_jwk_import( (const char*) key, key_len, &error );
+    if( !jwk ) {
+        errno = EINVAL;
+        return -1;
+    }
+
     UserCentricNetworkTokenEntry entry;
     entry.app_id = app_id;
-    entry.encryption_key = std::string( (const char *) key, key_len );
+    entry.jwk = jwk;
     entry.dscp = dscp;
     // TODO: Something about entry.blacklist...
 
@@ -256,8 +263,7 @@ NtfContext::CheckPacketForNetworkToken( const void * data,
     json_t * _token = ntf_token_decrypt(
             token->payload.data(),
             token->payload.size(),
-            hash_item->second.encryption_key.data(),
-            hash_item->second.encryption_key.size() );
+            hash_item->second.jwk );
     if (!_token) {
         DLOG(WARNING) << "NTE Decrypt did not find a valid token";
         return;

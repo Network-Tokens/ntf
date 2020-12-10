@@ -1,8 +1,8 @@
 #ifndef _NTF_CONTEXT_HPP_
 #define _NTF_CONTEXT_HPP_
 
-#include <set>
 #include <list>
+#include <set>
 #include "utils/cuckoo_map.h"
 #include "ntf_api.h"
 
@@ -56,10 +56,30 @@ struct NtfFlowEntry {
 };
 
 struct UserCentricNetworkTokenEntry {
-    uint32_t app_id;
-    std::string encryption_key;
+    uint32_t app_id = 0;
+    cjose_jwk_t *jwk = nullptr;
+    uint8_t dscp = 0;
     std::list<uint64_t> blacklist;
-    uint8_t dscp;
+
+    UserCentricNetworkTokenEntry() {}
+
+    UserCentricNetworkTokenEntry( const UserCentricNetworkTokenEntry& o ) {
+        *this = o;
+    }
+
+    UserCentricNetworkTokenEntry &operator=( const UserCentricNetworkTokenEntry& o ) {
+        if( this != &o ) {
+            cjose_err error;
+            jwk = cjose_jwk_retain( o.jwk, &error );
+        }
+        return *this;
+    }
+
+    ~UserCentricNetworkTokenEntry() {
+        if( jwk ) {
+            cjose_jwk_release( jwk );
+        }
+    }
 };
 
 using FlowTable = bess::utils::CuckooMap<

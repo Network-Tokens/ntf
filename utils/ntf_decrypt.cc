@@ -10,28 +10,23 @@
 #include <glog/logging.h>
 #include <jansson.h>
 
+#undef DLOG
+#define DLOG LOG
+
 
 extern "C" json_t *
-ntf_token_decrypt( const char * token_buf,
-                   size_t       token_buf_len,
-                   const char * key_buf,
-                   size_t       key_buf_len )
+ntf_token_decrypt( const char *        token_buf,
+                   size_t              token_buf_len,
+                   const cjose_jwk_t * jwk )
 {
     json_t *ret( nullptr );
     cjose_jwe_t *jwe( nullptr );
-    cjose_jwk_t *jwk( nullptr );
 
     do {
         cjose_err error;
         jwe = cjose_jwe_import(token_buf, token_buf_len, &error);
         if(!jwe) {
             DLOG(WARNING) << "Failed to load JWE ( " << error.message << " )";
-            break;
-        }
-
-        jwk = cjose_jwk_import(key_buf, key_buf_len, &error);
-        if(!jwk) {
-            DLOG(WARNING) << "Failed to load JWK ( " << error.message << " )";
             break;
         }
 
@@ -46,10 +41,6 @@ ntf_token_decrypt( const char * token_buf,
         ret = json_loadb((char*)output, n_bytes, 0, &j_error );
         cjose_get_dealloc()( output );
     } while(0);
-
-    if(jwk) {
-        cjose_jwk_release(jwk);
-    }
 
     if(jwe) {
         cjose_jwe_release(jwe);

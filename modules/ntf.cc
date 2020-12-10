@@ -26,6 +26,9 @@ using ntf::utils::AttributeTypes;
 using ntf::utils::Stun;
 using ntf::utils::StunAttribute;
 
+#undef DLOG
+#define DLOG LOG
+
 
 // Value to use to indicate no application was detected
 uint32_t APP_ID_NONE = 0x0;
