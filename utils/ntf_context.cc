@@ -377,6 +377,7 @@ CheckField( const json_t *    payload,
         case JSON_OBJECT:
         case JSON_ARRAY:
         case JSON_NULL:
+        default:
             DLOG(WARNING) << __FUNCTION__ << ": unsupported field type";
             return false;
     }
