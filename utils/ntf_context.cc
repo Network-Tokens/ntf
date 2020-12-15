@@ -156,6 +156,7 @@ CheckForIpv4( uint8_t * data,
         length > sizeof(Ipv4) &&
         ip->protocol != IpProto::kUdp
     ) {
+        DLOG(WARNING) << __FUNCTION__ << ": not UDP/IPv4";
         return false;
     }
     ipv4 = ip;
@@ -173,6 +174,7 @@ CheckPacketForNetworkToken( const uint8_t * data,
     DCHECK( offset <= sizeof(Ethernet) );
 
     if( !ipv4 || ipv4->protocol != IpProto::kUdp ) {
+        DLOG(WARNING) << __FUNCTION__ << ": not UDP/IPv4";
         return false;
     }
 
@@ -186,6 +188,7 @@ CheckPacketForNetworkToken( const uint8_t * data,
     // attribute.
     const size_t STUN_PACKET_MIN(sizeof(Udp) + sizeof(Stun));
     if (udp->length.value() <= STUN_PACKET_MIN) {
+        DLOG(WARNING) << __FUNCTION__ << ": packet too short";
         return false;
     }
 
@@ -195,6 +198,7 @@ CheckPacketForNetworkToken( const uint8_t * data,
     // length?  TODO(@yiannis): check that message type is also valid.
     const Stun *stun = (const Stun*)( data + offset );
     if (stun->message_length.value() != udp->length.value() - STUN_PACKET_MIN) {
+        DLOG(WARNING) << __FUNCTION__ << ": truncated STUN message";
         return false;
     }
 
@@ -225,11 +229,13 @@ CheckPacketForNetworkToken( const uint8_t * data,
         // screwed parsing. Move on.  If remaining bytes == padded_length then
         // we finished parsing this packet.
         if (padded_length < 4 || padded_length >= remaining_bytes) {
+            DLOG(WARNING) << __FUNCTION__ << ": malformed STUN message";
             return false;
         }
         remaining_bytes -= padded_length; // type + length + padded payload
         next_attribute += padded_length;
     }
+    DLOG(WARNING) << __FUNCTION__ << ": no network token";
     return false;
 }
 
@@ -241,6 +247,8 @@ CheckTokenAppId( const NetworkToken &            token,
 {
     auto * hash_item = token_table.Find( token.app_id );
     if( !hash_item ) {
+        DLOG(WARNING) << __FUNCTION__ << ": no app_id: 0x" << std::hex
+                      << token.app_id << std::dec;
         return false;
     }
 
@@ -258,7 +266,7 @@ CheckDecryptToken( const NetworkToken &           token,
             token_entry->jwk );
 
     if( !payload ) {
-        DLOG(WARNING) << "NTE Decrypt did not find a valid token";
+        DLOG(WARNING) << __FUNCTION__ << ": token invalid";
         return false;
     }
 
@@ -274,12 +282,13 @@ CheckTokenExpiration( const json_t * payload,
     if( !val ) {
         // TODO: Should tokens without exp be invalid, or always valid?  For
         // now we assume they are invalid.
+        DLOG(WARNING) << __FUNCTION__ << ": no expiry on token";
         return false;
     }
 
     uint64_t exp_ns = json_integer_value(val) * 1e9;
     if (exp_ns < now) {
-        DLOG(WARNING) << "Detected token is expired --- ignoring...";
+        DLOG(WARNING) << __FUNCTION__ << ": token expired";
         return false;
     }
     return true;
@@ -293,19 +302,19 @@ CheckBoundIp( const json_t * payload,
     auto val = json_object_get( payload, "bip" );
     if( !val ) {
         // TODO: Should tokens without bip be invalid?  For now, assume yes.
+        DLOG(WARNING) << __FUNCTION__ << ": no bound IP on token";
         return false;
     }
 
     std::string bound_ip = json_string_value( val );
     be32_t parsed_addr;
     if( !ParseIpv4Address(bound_ip, &parsed_addr) ) {
-        DLOG(WARNING) << "Detected token does not have a valid bound IP address --- ignoring...";
+        DLOG(WARNING) << __FUNCTION__ << ": invalid bound IP on token";
         return false;
     }
 
     if( (parsed_addr != ipv4->src) && (parsed_addr != ipv4->dst) ) {
-        DLOG(WARNING) << "Detected token is bound to an IP other than source "
-                         "and destination "
+        DLOG(WARNING) << __FUNCTION__ << ": mismatched bound IP "
                       << "(BIP:" << ToIpv4Address( parsed_addr )
                       << " SRCIP:" << ToIpv4Address( ipv4->src )
                       << " DSTIP:" << ToIpv4Address( ipv4->dst ) << ")";
@@ -323,16 +332,19 @@ CheckField( const json_t *    payload,
             NtfFlowEntry &    flow_entry )
 {
     if( !field_id ) {
+        DLOG(WARNING) << __FUNCTION__ << ": invalid field ID";
         return false;
     }
 
     size_t idx = field_id - 1;
     if( idx >= fields.size() ) {
+        DLOG(WARNING) << __FUNCTION__ << ": field does not exist";
         return false;
     }
 
     auto val = json_object_get( payload, fields[idx].c_str() );
     if( !val ) {
+        DLOG(WARNING) << __FUNCTION__ << ": token does not contain field";
         return false;
     }
 
@@ -365,6 +377,7 @@ CheckField( const json_t *    payload,
         case JSON_OBJECT:
         case JSON_ARRAY:
         case JSON_NULL:
+            DLOG(WARNING) << __FUNCTION__ << ": unsupported field type";
             return false;
     }
 
@@ -420,6 +433,7 @@ NtfContext::ProcessPacket( void *     data,
 
     if( !ipv4 ) {
         // We can do no good to this packet, so don't even try
+        DLOG(WARNING) << __FUNCTION__ << ": unrecognized packet";
         return false;
     }
 
@@ -430,12 +444,14 @@ NtfContext::ProcessPacket( void *     data,
     auto * hash_reverse_item = flowMap_.Find( flow_id.Reverse() );
 
     if( !hash_item ) {
+        DLOG(WARNING) << __FUNCTION__ << ": flow not whitelisted";
         ResetDscpMarking( data, length );
         return false;
     }
 
     // If we're looking for a different bound field, reject.
     if( field_id && field_id != hash_item->second.field_id ) {
+        DLOG(WARNING) << __FUNCTION__ << ": field not bound on flow";
         ResetDscpMarking( data, length );
         return false;
     }
@@ -447,6 +463,7 @@ NtfContext::ProcessPacket( void *     data,
     // TODO(@yiannis): we should check expired flows when adding
     // new flows as well.
     if( now - hash_item->second.last_refresh> kTimeOutNs ) {
+        DLOG(WARNING) << __FUNCTION__ << ": token expired";
         flowMap_.Remove( hash_item->first );
         flowMap_.Remove( hash_reverse_item->first );
         ResetDscpMarking( data, length );
