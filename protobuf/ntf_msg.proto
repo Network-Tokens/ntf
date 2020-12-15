@@ -2,13 +2,9 @@ syntax = "proto3";
 
 package ntf.pb;
 
-message NtfTableCreateArg {
+message NtfInitArg {
 	uint32 dpid = 1;
 	uint32 max_entries = 2;
-}
-
-message NtfTableDeleteArg {
-	uint32 dpid = 1;
 }
 
 message UserCentricNetworkToken {

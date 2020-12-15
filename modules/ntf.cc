@@ -31,62 +31,30 @@ using ntf::utils::StunAttribute;
 uint32_t APP_ID_NONE = 0x0;
 
 const Commands NTF::cmds = {
-    {"table_create", "NtfTableCreateArg", MODULE_CMD_FUNC(&NTF::CommandTableCreate), Command::THREAD_UNSAFE},
-    {"table_delete", "NtfTableDeleteArg", MODULE_CMD_FUNC(&NTF::CommandTableDelete), Command::THREAD_UNSAFE},
     {"entry_create", "NtfEntryCreateArg", MODULE_CMD_FUNC(&NTF::CommandEntryCreate), Command::THREAD_UNSAFE},
     {"entry_modify", "NtfEntryModifyArg", MODULE_CMD_FUNC(&NTF::CommandEntryModify), Command::THREAD_UNSAFE},
     {"entry_delete", "NtfEntryDeleteArg", MODULE_CMD_FUNC(&NTF::CommandEntryDelete), Command::THREAD_UNSAFE},
 };
 
 CommandResponse
-NTF::Init(const bess::pb::EmptyArg &) {
+NTF::Init(const ntf::pb::NtfInitArg &arg) {
     using AccessMode = bess::metadata::Attribute::AccessMode;
 
     DLOG(WARNING) << __FUNCTION__;
-    dpid = 0;
-    if( ntf_ctx ) {
-        ntf_context_delete( ntf_ctx );
-        ntf_ctx = nullptr;
-    }
-
-    rule_id_attr = AddMetadataAttr("rule_id", sizeof(uint32_t), AccessMode::kWrite);
-
-    return CommandSuccess();
-};
-
-CommandResponse
-NTF::CommandTableCreate(const ntf::pb::NtfTableCreateArg &arg) {
-    DLOG(WARNING) << __FUNCTION__ << "(dpid=" << arg.dpid() << ", max_entries="
-                 << arg.max_entries() << ")" ;
-
-    if (dpid) {
-        DLOG(WARNING) << "Token table with DPID " << dpid <<
-            " already exists, delete this first to proceed";
-        return CommandFailure(-1, "token table already exists, delete this first to proceed");
-    }
 
     if (arg.dpid() == 0) {
         return CommandFailure(-1, "invalid DPID value");
     }
     dpid = arg.dpid();
+
     uint32_t max_token_entries = arg.max_entries();
-    ntf_ctx = ntf_context_new( max_token_entries );
-    return CommandSuccess();
-};
-
-CommandResponse
-NTF::CommandTableDelete(const ntf::pb::NtfTableDeleteArg &arg) {
-    DLOG(WARNING) << __FUNCTION__ << "(dpid=" << arg.dpid() << ")";
-
-    if (dpid != arg.dpid() || dpid == 0) {
-        return CommandFailure(-1, "invalid DPID value");
-    }
-
-    dpid = 0;
     if( ntf_ctx ) {
         ntf_context_delete( ntf_ctx );
-        ntf_ctx = nullptr;
     }
+    ntf_ctx = ntf_context_new( max_token_entries );
+
+    rule_id_attr = AddMetadataAttr("rule_id", sizeof(uint32_t), AccessMode::kWrite);
+    sid_field = ntf_context_bind_field( ntf_ctx, "sid" );
     return CommandSuccess();
 };
 
@@ -191,16 +159,22 @@ void NTF::ProcessBatch(Context *ctx, bess::PacketBatch *batch) {
         void * data( pkt->head_data<void*>() );
         size_t len( pkt->head_len() );
 
-        token_app_id_t token_app_id = ntf_process_packet(
-                ntf_ctx, data, len, now );
-        if( token_app_id ) {
-            // TODO: In the case of internally managed state, who manages the
-            // rule ID?  I think the BESS module will maintain the
-            // token_app_id->rule_id mapping.  For now use token_app_id until I
-            // hook it up.
-            // set_attr<uint32_t>(this, rule_id_attr, pkt, entry.rule_id);
+        void * sid_val;
+        size_t sid_val_len;
 
-            set_attr<uint32_t>(this, rule_id_attr, pkt, token_app_id);
+        bool ret = ntf_process_packet( ntf_ctx, data, len, sid_field, now,
+                &sid_val, &sid_val_len );
+        if( ret ) {
+            uint32_t sid32 = 0;
+            switch( sid_val_len ) {
+                case sizeof(uint32_t):
+                    sid32 = *(uint32_t*) sid_val;
+                    break;
+                default:
+                    // TODO: For now, ignore it if it's not 4 bytes.
+                    break;
+            }
+            set_attr<uint32_t>(this, rule_id_attr, pkt, sid32);
         }
     }
     RunNextModule(ctx, batch);

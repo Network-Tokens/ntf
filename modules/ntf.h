@@ -35,7 +35,7 @@
 #include <optional>
 
 #include "module.h"
-#include "pb/module_msg.pb.h"
+// #include "pb/module_msg.pb.h"
 #include "pb/ntf_msg.pb.h"
 
 #include "utils/cuckoo_map.h"
@@ -88,10 +88,8 @@ class NTF final : public Module {
 
     uint32_t dpid;
 
-    CommandResponse Init(const bess::pb::EmptyArg &arg);
+    CommandResponse Init(const ntf::pb::NtfInitArg &arg);
 
-    CommandResponse CommandTableCreate(const ntf::pb::NtfTableCreateArg &arg);
-    CommandResponse CommandTableDelete(const ntf::pb::NtfTableDeleteArg &arg);
     CommandResponse CommandEntryCreate(const ntf::pb::NtfEntryCreateArg &arg);
     CommandResponse CommandEntryModify(const ntf::pb::NtfEntryModifyArg &arg);
     CommandResponse CommandEntryDelete(const ntf::pb::NtfEntryDeleteArg &arg);
@@ -103,6 +101,9 @@ class NTF final : public Module {
  private:
     // Field for rule ID attribute
     int rule_id_attr = -1;
+
+    // Field for sid in token
+    field_id_t sid_field = 0;
 
     // NTF API context
     ntf_context_t * ntf_ctx;
