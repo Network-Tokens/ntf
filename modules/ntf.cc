@@ -31,13 +31,13 @@ using ntf::utils::StunAttribute;
 uint32_t APP_ID_NONE = 0x0;
 
 const Commands NTF::cmds = {
-    {"entry_create", "NtfEntryCreateArg", MODULE_CMD_FUNC(&NTF::CommandEntryCreate), Command::THREAD_UNSAFE},
-    {"entry_modify", "NtfEntryModifyArg", MODULE_CMD_FUNC(&NTF::CommandEntryModify), Command::THREAD_UNSAFE},
-    {"entry_delete", "NtfEntryDeleteArg", MODULE_CMD_FUNC(&NTF::CommandEntryDelete), Command::THREAD_UNSAFE},
+    {"entry_create", "NTFEntryCreateArg", MODULE_CMD_FUNC(&NTF::CommandEntryCreate), Command::THREAD_UNSAFE},
+    {"entry_modify", "NTFEntryModifyArg", MODULE_CMD_FUNC(&NTF::CommandEntryModify), Command::THREAD_UNSAFE},
+    {"entry_delete", "NTFEntryDeleteArg", MODULE_CMD_FUNC(&NTF::CommandEntryDelete), Command::THREAD_UNSAFE},
 };
 
 CommandResponse
-NTF::Init(const ntf::pb::NtfInitArg &arg) {
+NTF::Init(const ntf::pb::NTFArg &arg) {
     using AccessMode = bess::metadata::Attribute::AccessMode;
 
     DLOG(WARNING) << __FUNCTION__;
@@ -59,17 +59,12 @@ NTF::Init(const ntf::pb::NtfInitArg &arg) {
 };
 
 CommandResponse
-NTF::CommandEntryCreate(const ntf::pb::NtfEntryCreateArg &arg) {
-    LOG(WARNING) << __FUNCTION__ << "(dpid=" << arg.dpid() << std::hex
-                 << ", app_id=" << arg.token().app_id()
+NTF::CommandEntryCreate(const ntf::pb::NTFEntryCreateArg &arg) {
+    LOG(WARNING) << __FUNCTION__ << "(app_id=" << arg.token().app_id()
                  << ", encryption_key=" << arg.token().encryption_key()
                  << ", dscp=" << arg.dscp() << std::dec
                  << ", rule_id=" << arg.rule_id()
                  << ")";
-
-    if (dpid == 0 || arg.dpid() != dpid) {
-        return CommandFailure(-1, "invalid DPID value");
-    }
 
     const uint32_t token_app_id( arg.token().app_id() );
     const uint8_t dscp( arg.dscp() );
@@ -93,17 +88,12 @@ NTF::CommandEntryCreate(const ntf::pb::NtfEntryCreateArg &arg) {
 }
 
 CommandResponse
-NTF::CommandEntryModify(const ntf::pb::NtfEntryModifyArg &arg) {
-    LOG(WARNING) << __FUNCTION__ << "(dpid=" << arg.dpid() << std::hex
-                 << ", app_id=" << arg.token().app_id()
+NTF::CommandEntryModify(const ntf::pb::NTFEntryModifyArg &arg) {
+    LOG(WARNING) << __FUNCTION__ << "(app_id=" << arg.token().app_id()
                  << ", encryption_key=" << arg.token().encryption_key()
                  << ", dscp=" << arg.dscp() << std::dec
                  << ", rule_id=" << arg.rule_id()
                  << ")";
-
-    if (dpid == 0 || arg.dpid() != dpid) {
-        return CommandFailure(-1, "invalid DPID value");
-    }
 
     const uint32_t token_app_id( arg.token().app_id() );
     const uint8_t dscp( arg.dscp() );
@@ -125,13 +115,8 @@ NTF::CommandEntryModify(const ntf::pb::NtfEntryModifyArg &arg) {
 }
 
 CommandResponse
-NTF::CommandEntryDelete(const ntf::pb::NtfEntryDeleteArg &arg) {
-    LOG(WARNING) << __FUNCTION__ << "(dpid=" << arg.dpid() << ", app_id="
-                 << arg.app_id() << ")";
-
-    if (dpid == 0 || arg.dpid() != dpid) {
-        return CommandFailure(-1, "invalid DPID value");
-    }
+NTF::CommandEntryDelete(const ntf::pb::NTFEntryDeleteArg &arg) {
+    LOG(WARNING) << __FUNCTION__ << "(app_id=" << arg.app_id() << ")";
 
     const uint32_t token_app_id( arg.app_id() );
 

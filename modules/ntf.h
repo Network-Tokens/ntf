@@ -88,11 +88,11 @@ class NTF final : public Module {
 
     uint32_t dpid;
 
-    CommandResponse Init(const ntf::pb::NtfInitArg &arg);
+    CommandResponse Init(const ntf::pb::NTFArg &arg);
 
-    CommandResponse CommandEntryCreate(const ntf::pb::NtfEntryCreateArg &arg);
-    CommandResponse CommandEntryModify(const ntf::pb::NtfEntryModifyArg &arg);
-    CommandResponse CommandEntryDelete(const ntf::pb::NtfEntryDeleteArg &arg);
+    CommandResponse CommandEntryCreate(const ntf::pb::NTFEntryCreateArg &arg);
+    CommandResponse CommandEntryModify(const ntf::pb::NTFEntryModifyArg &arg);
+    CommandResponse CommandEntryDelete(const ntf::pb::NTFEntryDeleteArg &arg);
 
     void ProcessBatch(Context*, bess::PacketBatch*) override;
 

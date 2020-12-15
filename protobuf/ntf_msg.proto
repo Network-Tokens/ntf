@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package ntf.pb;
 
-message NtfInitArg {
+message NTFArg {
 	uint32 dpid = 1;
 	uint32 max_entries = 2;
 }
@@ -13,29 +13,26 @@ message UserCentricNetworkToken {
 	repeated uint64 blacklist = 3;
 }
 
-message NtfEntryCreateArg {
-	uint32 dpid = 1;
-	UserCentricNetworkToken token = 2;
+message NTFEntryCreateArg {
+	UserCentricNetworkToken token = 1;
 	oneof set_dscp {
-		uint32 dscp = 3;
+		uint32 dscp = 2;
 	}
 	oneof set_rule_id {
-		uint32 rule_id = 4;
+		uint32 rule_id = 3;
 	}
 }
 
-message NtfEntryModifyArg {
-	uint32 dpid = 1;
-	UserCentricNetworkToken token = 2;
+message NTFEntryModifyArg {
+	UserCentricNetworkToken token = 1;
 	oneof set_dscp {
-		uint32 dscp = 3;
+		uint32 dscp = 2;
 	}
 	oneof set_rule_id {
-		uint32 rule_id = 4;
+		uint32 rule_id = 3;
 	}
 }
 
-message NtfEntryDeleteArg {
-	uint32 dpid = 1;
-	uint32 app_id = 2;
+message NTFEntryDeleteArg {
+	uint32 app_id = 1;
 }
