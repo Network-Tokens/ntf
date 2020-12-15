@@ -29,6 +29,10 @@ typedef uint32_t token_app_id_t;
  */
 typedef uint8_t dscp_t;
 
+/**
+ * Type for a bound field in a network token
+ */
+typedef uint32_t field_id_t;
 
 /**
  * Create a new NTF context.
@@ -119,10 +123,13 @@ ntf_context_app_remove( ntf_context_t *  ctx,
  * the packet and no state exists for this flow.
  */
 token_app_id_t
-ntf_process_packet( ntf_context_t *        ctx,
-                    void *                 data,
-                    size_t                 length,
-                    uint64_t               now );
+ntf_process_packet( ntf_context_t * ctx,
+                    void *          data,
+                    size_t          length,
+                    field_id_t      field_id,
+                    uint64_t        now,
+                    void **         field_value,
+                    size_t *        field_value_len );
 
 /**
  * Returns the number of token keys that have been registered with this NTF
@@ -158,6 +165,20 @@ json_t *
 ntf_token_decrypt( const char *        token_buf,
                    size_t              token_buf_len,
                    const cjose_jwk_t * key );
+
+
+/**
+ * Bind a field name.  A bound field name is a field name that matches a key in
+ * the payload.  The bound field can be retrieved efficiently for the flow of a
+ * given packet that has previously matched a network token.
+ * \param ctx NTF context
+ * \param field_name Name of field in payload to bind to
+ * \return An ID that can be used in ntf_process_packet() to retrieve the value
+ * of the field in a payload.
+ */
+field_id_t
+ntf_context_bind_field( ntf_context_t * ctx,
+                        const char *    field_name );
 
 
 #ifdef __cplusplus

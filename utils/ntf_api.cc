@@ -82,9 +82,13 @@ token_app_id_t
 ntf_process_packet( ntf_context_t *        ptr,
                     void *                 data,
                     size_t                 length,
-                    uint64_t               now )
+                    field_id_t             field_id,
+                    uint64_t               now,
+                    void **                field_value,
+                    size_t *               field_value_len )
 {
-    return ptr->ctx.ProcessPacket( data, length, now );
+    return ptr->ctx.ProcessPacket( data, length, field_id, now, field_value,
+            field_value_len );
 }
 
 
@@ -107,6 +111,17 @@ size_t
 ntf_context_whitelist_count( const ntf_context_t * ptr )
 {
     return ptr->ctx.WhitelistCount();
+}
+
+
+/**
+ * Bind a field name.
+ */
+field_id_t
+ntf_context_bind_field( ntf_context_t * ptr,
+                        const char *    field_name )
+{
+    return ptr->ctx.BindFieldName( field_name );
 }
 
 } // extern "C"

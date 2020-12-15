@@ -14,6 +14,12 @@ struct FlowId {
     uint16_t dst_tp;
     uint8_t protocol;
 
+    FlowId Reverse() const {
+        FlowId id = *this;
+        std::swap( id.src_addr, id.dst_addr );
+        std::swap( id.src_tp, id.dst_tp );
+        return id;
+    }
 };
 
 struct Flow {
@@ -50,9 +56,15 @@ struct Flow {
 };
 
 struct NtfFlowEntry {
-    uint64_t last_refresh;
-    uint32_t app_id;
-    uint8_t dscp;
+    uint64_t    last_refresh;
+    uint32_t    app_id;
+    uint8_t     dscp;
+    field_id_t  field_id;
+    std::string field_data;
+
+    void SetFieldData( field_id_t   id,
+                       const void * data,
+                       size_t       len );
 };
 
 struct UserCentricNetworkTokenEntry {
@@ -88,6 +100,7 @@ using FlowTable = bess::utils::CuckooMap<
 using TokenTable = bess::utils::CuckooMap<
         uint32_t, UserCentricNetworkTokenEntry>;
 
+using FieldList = std::vector<std::string>;
 
 class NtfContext {
 public:
@@ -101,18 +114,22 @@ public:
                         size_t         key_len,
                         dscp_t         dscp );
 
-    token_app_id_t ProcessPacket( void *   data,
-                                  size_t   length,
-                                  uint64_t now );
+    field_id_t BindFieldName( const std::string& name )
+        { fields.push_back( name ); return fields.size(); }
+
+    bool ProcessPacket( void *     data,
+                        size_t     length,
+                        field_id_t field_id,
+                        uint64_t   now,
+                        void **    field_value,
+                        size_t *   field_value_len );
+ 
 
     size_t ApplicationCount() const { return tokenMap_.Count(); }
+
     size_t WhitelistCount() const   { return flowMap_.Count(); }
 
 private:
-    void CheckPacketForNetworkToken( const void * data,
-                                     size_t       length,
-                                     uint64_t     current_ns );
-
     void SetDscpMarking( void * data, size_t length, uint8_t dscp );
     void ResetDscpMarking( void * data, size_t length );
 
@@ -127,6 +144,10 @@ private:
 
     // State for tokens.
     TokenTable tokenMap_;
+
+    // List of fields that can be bound
+    FieldList fields;
+
 
     size_t max_token_entries = 0;
 };
