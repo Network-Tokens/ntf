@@ -54,32 +54,32 @@ NTF::Init(const ntf::pb::NTFArg &arg) {
     ntf_ctx = ntf_context_new( max_token_entries );
 
     rule_id_attr = AddMetadataAttr("rule_id", sizeof(uint32_t), AccessMode::kWrite);
-    sid_field = ntf_context_bind_field( ntf_ctx, "sid" );
+    sid_field = ntf_context_get_field_id( ntf_ctx, "sid" );
     return CommandSuccess();
 };
 
 CommandResponse
 NTF::CommandEntryCreate(const ntf::pb::NTFEntryCreateArg &arg) {
-    LOG(WARNING) << __FUNCTION__ << "(app_id=" << arg.token().app_id()
+    LOG(WARNING) << __FUNCTION__ << "(token_type=" << arg.token().token_type()
                  << ", encryption_key=" << arg.token().encryption_key()
                  << ", dscp=" << arg.dscp() << std::dec
                  << ", rule_id=" << arg.rule_id()
                  << ")";
 
-    const uint32_t token_app_id( arg.token().app_id() );
+    const uint32_t token_type( arg.token().token_type() );
     const uint8_t dscp( arg.dscp() );
     const std::string key( arg.token().encryption_key() );
 
-    LOG(INFO) << " - Creating entry for: " << token_app_id;
-    int ret = ntf_context_app_add(
-            ntf_ctx, token_app_id, key.data(), key.size(), dscp );
+    LOG(INFO) << " - Creating entry for: " << token_type;
+    int ret = ntf_context_token_type_add(
+            ntf_ctx, token_type, key.data(), key.size(), dscp );
     if( ret == 0 ) {
         return CommandSuccess();
     }
 
     switch( errno ) {
     case EEXIST:
-        return CommandFailure(-1, "token with app_id already exists --- use entry_modify instead");
+        return CommandFailure(-1, "token with token_type already exists --- use entry_modify instead");
     case ENOMEM:
         return CommandFailure(-1, "token table is full");
     default:
@@ -89,26 +89,26 @@ NTF::CommandEntryCreate(const ntf::pb::NTFEntryCreateArg &arg) {
 
 CommandResponse
 NTF::CommandEntryModify(const ntf::pb::NTFEntryModifyArg &arg) {
-    LOG(WARNING) << __FUNCTION__ << "(app_id=" << arg.token().app_id()
+    LOG(WARNING) << __FUNCTION__ << "(token_type=" << arg.token().token_type()
                  << ", encryption_key=" << arg.token().encryption_key()
                  << ", dscp=" << arg.dscp() << std::dec
                  << ", rule_id=" << arg.rule_id()
                  << ")";
 
-    const uint32_t token_app_id( arg.token().app_id() );
+    const uint32_t token_type( arg.token().token_type() );
     const uint8_t dscp( arg.dscp() );
     const std::string key( arg.token().encryption_key() );
 
-    LOG(INFO) << " - Updating entry for: " << token_app_id;
-    int ret = ntf_context_app_modify(
-            ntf_ctx, token_app_id, key.data(), key.size(), dscp );
+    LOG(INFO) << " - Updating entry for: " << token_type;
+    int ret = ntf_context_token_type_modify(
+            ntf_ctx, token_type, key.data(), key.size(), dscp );
     if( ret == 0 ) {
         return CommandSuccess();
     }
 
     switch( errno ) {
     case ENOENT:
-        return CommandFailure(-1, "token with app_id does not exist --- use entry_create instead");
+        return CommandFailure(-1, "token with token_type does not exist --- use entry_create instead");
     default:
         return CommandFailure(ret, "unknown error");
     }
@@ -116,19 +116,19 @@ NTF::CommandEntryModify(const ntf::pb::NTFEntryModifyArg &arg) {
 
 CommandResponse
 NTF::CommandEntryDelete(const ntf::pb::NTFEntryDeleteArg &arg) {
-    LOG(WARNING) << __FUNCTION__ << "(app_id=" << arg.app_id() << ")";
+    LOG(WARNING) << __FUNCTION__ << "(token_type=" << arg.token_type() << ")";
 
-    const uint32_t token_app_id( arg.app_id() );
+    const uint32_t token_type( arg.token_type() );
 
-    LOG(INFO) << " - Removing entry for: " << token_app_id;
-    int ret = ntf_context_app_remove( ntf_ctx, token_app_id );
+    LOG(INFO) << " - Removing entry for: " << token_type;
+    int ret = ntf_context_token_type_remove( ntf_ctx, token_type );
     if( ret == 0 ) {
         return CommandSuccess();
     }
 
     switch( errno ) {
     case ENOENT:
-        return CommandFailure(-1, "cannot find token with this app_id");
+        return CommandFailure(-1, "cannot find token with this token_type");
     default:
         return CommandFailure(ret, "unknown error");
     }
@@ -168,7 +168,7 @@ void NTF::ProcessBatch(Context *ctx, bess::PacketBatch *batch) {
 std::string NTF::GetDesc() const {
     return bess::utils::Format(
         "%zu keys, %zu whitelisted flows",
-        ntf_context_app_count( ntf_ctx ),
+        ntf_context_token_type_count( ntf_ctx ),
         ntf_context_whitelist_count( ntf_ctx )
     );
 }

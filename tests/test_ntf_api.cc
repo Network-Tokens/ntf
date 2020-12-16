@@ -9,16 +9,16 @@ TEST(NtfContextUsage) {
     ntf_context_t * ctx = ntf_context_new( 10 );
     CHECK( ctx );
 
-    int ret = ntf_context_app_add( ctx, 0xB00F, key.data(), key.size(), 42 );
+    int ret = ntf_context_token_type_add( ctx, 0xB00F, key.data(), key.size(), 42 );
     CHECK_EQUAL( 0, ret );
 
     // We should have a single key with no flows in the whitelist
-    CHECK_EQUAL( 1U, ntf_context_app_count( ctx ) );
+    CHECK_EQUAL( 1U, ntf_context_token_type_count( ctx ) );
     CHECK_EQUAL( 0U, ntf_context_whitelist_count( ctx ) );
 
     // We want to fetch the 'sid' field from the payload of valid tokens to
     // match against to determine which service ID/QoS policy to apply.
-    int field_id = ntf_context_bind_field( ctx, "sid" );
+    int field_id = ntf_context_get_field_id( ctx, "sid" );
     CHECK( field_id > 0 );
 
     const std::string stun_packet(

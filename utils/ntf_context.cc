@@ -2,6 +2,7 @@
 #include <errno.h>
 #include <jansson.h>
 #include "ntf_context.hpp"
+#include "ntf_decrypt.h"
 #include "utils/stun.h"
 
 // From BESS
@@ -22,7 +23,7 @@ using ntf::utils::StunAttribute;
 
 struct NetworkToken {
     uint8_t      reflect_type;
-    uint32_t     app_id;
+    uint32_t     token_type;
     const char * payload;
     size_t       payload_len;
 
@@ -51,12 +52,12 @@ NtfFlowEntry::SetFieldData( field_id_t   id,
 
 
 int
-NtfContext::AddApplication( token_app_id_t app_id,
-                            const void *   key,
-                            size_t         key_len,
-                            dscp_t         dscp )
+NtfContext::AddTokenType( token_type_t token_type,
+                          const void *   key,
+                          size_t         key_len,
+                          dscp_t         dscp )
 {
-    if (tokenMap_.Find(app_id)) {
+    if (tokenMap_.Find(token_type)) {
         errno = EEXIST;
         return -1;
     }
@@ -74,18 +75,18 @@ NtfContext::AddApplication( token_app_id_t app_id,
     }
 
     UserCentricNetworkTokenEntry entry;
-    entry.app_id = app_id;
+    entry.token_type = token_type;
     entry.jwk = jwk;
     entry.dscp = dscp;
     // TODO: Something about entry.blacklist...
 
-    if (!tokenMap_.Insert(entry.app_id, entry)) {
+    if (!tokenMap_.Insert(entry.token_type, entry)) {
         errno = EAGAIN;
         LOG(WARNING) << "Failed to insert entry";
         return -1;
     }
 
-    DLOG(WARNING) << "Entry inserted for 0x" << std::hex << entry.app_id << std::dec;
+    DLOG(WARNING) << "Entry inserted for 0x" << std::hex << entry.token_type << std::dec;
 
     UpdateAuthoritativeDscpMarkings();
     errno = 0;
@@ -183,7 +184,7 @@ CheckPacketForNetworkToken( const uint8_t * data,
         if (attribute->type == be16_t(AttributeTypes::kNetworkToken)) {
             const NetworkTokenHeader * token_header = reinterpret_cast<const NetworkTokenHeader *>(attribute->payload_);
 
-            token.app_id = token_header->header.value() & 0x0FFFFFFF;
+            token.token_type = token_header->header.value() & 0x0FFFFFFF;
             token.reflect_type = (token_header->header.value() & 0xF0000000) >> 28;
             token.payload = token_header->payload;
             token.payload_len = attribute->length.value() -
@@ -216,10 +217,10 @@ CheckTokenAppId( const NetworkToken &            token,
                  TokenTable &                    token_table,
                  UserCentricNetworkTokenEntry *& entry )
 {
-    auto * hash_item = token_table.Find( token.app_id );
+    auto * hash_item = token_table.Find( token.token_type );
     if( !hash_item ) {
-        DLOG(WARNING) << __FUNCTION__ << ": no app_id: 0x" << std::hex
-                      << token.app_id << std::dec;
+        DLOG(WARNING) << __FUNCTION__ << ": no token_type: 0x" << std::hex
+                      << token.token_type << std::dec;
         return false;
     }
 
@@ -385,7 +386,7 @@ NtfContext::ProcessPacket( void *     data,
             field_id == 0 ||
             CheckField( payload, fields, field_id, new_flow )
         ) {
-            new_flow.app_id = token.app_id;
+            new_flow.token_type = token.token_type;
             new_flow.last_refresh = now;
             new_flow.dscp = token_entry->dscp;
 
@@ -393,7 +394,8 @@ NtfContext::ProcessPacket( void *     data,
             flowMap_.Insert( flow_id, new_flow );
             flowMap_.Insert( flow_id.Reverse(), new_flow );
 
-            DLOG(WARNING) << "Verified token with app-id 0x" << std::hex << token.app_id
+            DLOG(WARNING) << "Verified token with token type 0x"
+                          << std::hex << token.token_type
                           << " --- marking packets with DSCP 0x"
                           << (uint16_t) new_flow.dscp << std::dec;
         }

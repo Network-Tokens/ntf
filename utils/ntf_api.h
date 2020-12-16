@@ -1,8 +1,6 @@
 #ifndef _NTF_API_H_
 #define _NTF_API_H_
 
-#include <cjose/header.h>
-#include <cjose/jwk.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -10,6 +8,7 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+
 
 /**
  * NTF context - maintains information about flows, keys and other internal
@@ -21,7 +20,7 @@ typedef struct ntf_context_t ntf_context_t;
 /**
  * Identifies which application or service type within a token.
  */
-typedef uint32_t token_app_id_t;
+typedef uint32_t token_type_t;
 
 
 /**
@@ -53,11 +52,12 @@ ntf_context_delete( ntf_context_t * ctx );
 
 
 /**
- * Adds an application to an NTF context, so that the NTF context can detect
+ * Adds a token type to an NTF context, so that the NTF context can detect
  * tokens for this application/service type.
  * \param ctx NTF context
- * \param token_app_id The app ID that can be found within the network token
- * header
+ * \param token_type Token type identifier.  This ID is present in the header
+ * of a network token and is used to determine which key is used to decrypt the
+ * token.
  * \param key Pointer to encryption key (JWT)
  * \param key_len Length of encryption key
  * \param dscp If >0, indicate the DSCP value to set on packets of flows that
@@ -65,18 +65,18 @@ ntf_context_delete( ntf_context_t * ctx );
  * have presented valid network tokens.
  */
 int
-ntf_context_app_add( ntf_context_t *  ctx,
-                     token_app_id_t   token_app_id,
-                     const void *     key,
-                     size_t           key_len,
-                     dscp_t           dscp );
+ntf_context_token_type_add( ntf_context_t * ctx,
+                            token_type_t    token_type,
+                            const void *    key,
+                            size_t          key_len,
+                            dscp_t          dscp );
 
 
 /**
- * Updates an application already added to an NTF context.
+ * Updates the key & DSCP setting for a token type already added to an NTF
+ * context.
  * \param ctx NTF context
- * \param token_app_id The app ID that can be found within the network token
- * header
+ * \param token_type Token type identifier
  * \param key Pointer to encryption key (JWT)
  * \param key_len Length of encryption key
  * \param dscp If >0, indicate the DSCP value to set on packets of flows that
@@ -84,23 +84,40 @@ ntf_context_app_add( ntf_context_t *  ctx,
  * have presented valid network tokens.
  */
 int
-ntf_context_app_modify( ntf_context_t *  ctx,
-                       token_app_id_t   token_app_id,
-                       const void *     key,
-                       size_t           key_len,
-                       dscp_t           dscp );
+ntf_context_token_type_modify( ntf_context_t * ctx,
+                               token_type_t    token_type,
+                               const void *    key,
+                               size_t          key_len,
+                               dscp_t          dscp );
 
 
 /**
- * Removes an application from an NTF context.
+ * Removes a token type from an NTF context.
  * \param ctx NTF context
- * \param token_app_id The app ID to remove
+ * \param token_type The token type to remove
  * \return 0 on success, otherwise returns -1, with the reason in errno.
  * have presented valid network tokens.
  */
 int
-ntf_context_app_remove( ntf_context_t *  ctx,
-                        token_app_id_t   token_app_id );
+ntf_context_token_type_remove( ntf_context_t * ctx,
+                               token_type_t    token_type );
+
+
+/**
+ * Returns the ID for a given field name.  The field name specifies a key
+ * within the network token payload.  If the field is found within a network
+ * token, it is stored with the flow information and can be retrieved
+ * efficiently for any subsequent packets belonging to the same flow.
+ * \param ctx NTF context
+ * \param field_name Name of field in payload of which to retrieve its ID
+ * \return An ID that can be used in ntf_process_packet() to retrieve the value
+ * of the field in a payload.
+ */
+field_id_t
+ntf_context_get_field_id( ntf_context_t * ctx,
+                          const char *    field_name );
+
+
 
 
 /**
@@ -117,12 +134,21 @@ ntf_context_app_remove( ntf_context_t *  ctx,
  * \param ctx NTF context
  * \param data Pointer to the beginning of the raw packet data (either an
  * Ethernet frame or an IP packet)
+ * \param field_id The ID of the field to retrieve from the payload, or 0 if no
+ * field is to be retrieved.
  * \param length The length of the packet pointed to by data
  * \param now The current timestamp in nanoseconds
- * \return The token app ID for the flow, or 0 if there is no network token in
- * the packet and no state exists for this flow.
+ * \param field_value If the packet belongs to a whitelisted flow and the field
+ * matching field_id was found in the network token payload, the value of the
+ * field will be copied to the location specified by field_value.
+ * \param field_value_len If the field value is returned via field_value, the
+ * length of that value will be placed in field_value_len.
+ * \return The token type for the flow, or 0 if there is no network token in
+ * the packet and no state exists for this flow.  Also returns 0 for matching
+ * tokens if field_id is not zero, and no matching field was found in the
+ * network token for this flow.
  */
-token_app_id_t
+token_type_t
 ntf_process_packet( ntf_context_t * ctx,
                     void *          data,
                     size_t          length,
@@ -132,13 +158,13 @@ ntf_process_packet( ntf_context_t * ctx,
                     size_t *        field_value_len );
 
 /**
- * Returns the number of token keys that have been registered with this NTF
+ * Returns the number of token types that have been registered with this NTF
  * context.
  * \param ctx NTF context
  * \return Number of application keys that have been registered with this NTF
  */
 size_t
-ntf_context_app_count( const ntf_context_t * ctx );
+ntf_context_token_type_count( const ntf_context_t * ctx );
 
 
 /**
@@ -151,38 +177,9 @@ size_t
 ntf_context_whitelist_count( const ntf_context_t * ctx );
 
 
-/**
- * Decrypts a raw token using a key.  If the provided key was used to generate
- * the token and the token is valid, the payload is returned as a JSON object.
- * If the key or token are invalid, nullptr is returned.
- * \param token_buf Pointer to raw token data
- * \param token_bu_len The length of the buffer at token_buf
- * \param key Pointer to the JWK used to create the token
- * \return JSON object containing decrypted payload, or nullptr if the key or
- * token are invalid.
- */
-json_t *
-ntf_token_decrypt( const char *        token_buf,
-                   size_t              token_buf_len,
-                   const cjose_jwk_t * key );
-
-
-/**
- * Bind a field name.  A bound field name is a field name that matches a key in
- * the payload.  The bound field can be retrieved efficiently for the flow of a
- * given packet that has previously matched a network token.
- * \param ctx NTF context
- * \param field_name Name of field in payload to bind to
- * \return An ID that can be used in ntf_process_packet() to retrieve the value
- * of the field in a payload.
- */
-field_id_t
-ntf_context_bind_field( ntf_context_t * ctx,
-                        const char *    field_name );
-
-
 #ifdef __cplusplus
 } // extern "C"
 #endif
+
 
 #endif // _NTF_API_H_

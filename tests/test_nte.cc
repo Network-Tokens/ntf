@@ -1,7 +1,7 @@
 #include <UnitTest++/UnitTest++.h>
 #include <jansson.h>
 #include <string>
-#include "utils/ntf_api.h"
+#include "utils/ntf_decrypt.h"
 
 
 struct JwkWrapper {

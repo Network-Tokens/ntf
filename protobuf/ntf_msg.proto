@@ -8,7 +8,7 @@ message NTFArg {
 }
 
 message UserCentricNetworkToken {
-	uint32 app_id = 1;
+	uint32 token_type = 1;
 	string encryption_key = 2;
 	repeated uint64 blacklist = 3;
 }
@@ -34,5 +34,5 @@ message NTFEntryModifyArg {
 }
 
 message NTFEntryDeleteArg {
-	uint32 app_id = 1;
+	uint32 token_type = 1;
 }

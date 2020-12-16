@@ -50,15 +50,14 @@ using bess::utils::be32_t;
  *
  * Method of operation:
  *
- * NTF holds a number of network token entries in tokenTable. Each entry
- * describes a token, and is indexed through a unique app_id. app_id means a
- * network token application. For the purposes of this implementation an app_id
- * identifies a service offered by an operator. A network token entry includes
- * the key with which tokens are encrypted/decrypted, a blacklist, and the
- * actions to take when a token is detected.
+ * NTF holds a number of network token types within ntf_ctx.  Each token type
+ * contains an ID and a key that can be used for decrypting network tokens with
+ * the same token type.  Upon successful decryption of a network token, the
+ * operator can use a service ID attribute to determine which action to take
+ * for the flow.
  *
- * The supported actions right now are to mark the packet with a specific
- * DSCP codepoint, and to set the rule ID as metadata on packets.
+ * Upon detection of whitelisted traffic, the DSCP codepoint can be set on
+ * applicable packets.
  *
  * To prevent abuse, NTF assumes authoritative actions with regards to DSCP
  * markings. If deemed responsible for a specific codepoint, only packets/flows

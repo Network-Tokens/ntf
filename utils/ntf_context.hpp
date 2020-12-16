@@ -1,6 +1,7 @@
 #ifndef _NTF_CONTEXT_HPP_
 #define _NTF_CONTEXT_HPP_
 
+#include <cjose/jwk.h>
 #include <list>
 #include <set>
 #include "ntf_api.h"
@@ -82,7 +83,7 @@ struct Flow {
 
 struct NtfFlowEntry {
     uint64_t    last_refresh;
-    uint32_t    app_id;
+    uint32_t    token_type;
     uint8_t     dscp;
     field_id_t  field_id;
     std::string field_data;
@@ -93,7 +94,7 @@ struct NtfFlowEntry {
 };
 
 struct UserCentricNetworkTokenEntry {
-    uint32_t app_id = 0;
+    uint32_t token_type = 0;
     cjose_jwk_t *jwk = nullptr;
     uint8_t dscp = 0;
     std::list<uint64_t> blacklist;
@@ -134,12 +135,12 @@ public:
 
     virtual ~NtfContext() {}
 
-    int AddApplication( token_app_id_t app_id,
-                        const void *   key,
-                        size_t         key_len,
-                        dscp_t         dscp );
+    int AddTokenType( token_type_t token_type,
+                      const void * key,
+                      size_t       key_len,
+                      dscp_t       dscp );
 
-    field_id_t BindFieldName( const std::string& name )
+    field_id_t GetFieldId( const std::string& name )
         { fields.push_back( name ); return fields.size(); }
 
     bool ProcessPacket( void *     data,
@@ -150,9 +151,8 @@ public:
                         size_t *   field_value_len );
  
 
-    size_t ApplicationCount() const { return tokenMap_.Count(); }
-
-    size_t WhitelistCount() const   { return flowMap_.Count(); }
+    size_t TokenTypeCount() const { return tokenMap_.Count(); }
+    size_t WhitelistCount() const { return flowMap_.Count(); }
 
 private:
     void SetDscpMarking( void * data, size_t length, uint8_t dscp );
@@ -172,7 +172,6 @@ private:
 
     // List of fields that can be bound
     FieldList fields;
-
 
     size_t max_token_entries = 0;
 };
