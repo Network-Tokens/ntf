@@ -38,9 +38,6 @@ TEST(NtfContextUsage) {
     // We should have extracted the 'sid'.  It's an integer, so it should be 64
     // bits.
     CHECK_EQUAL( sizeof(uint64_t), field_value_len );
-
-    // We should have detected the token app ID from the packet correctly
-    // (TODO: this will become the service ID)
     uint64_t sid = * (uint64_t*) field_value;
     CHECK_EQUAL( 0xD00D, sid );
 
