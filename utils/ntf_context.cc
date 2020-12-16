@@ -8,8 +8,6 @@
 #include "packet.h"
 #include "utils/endian.h"
 #include "utils/ether.h"
-#include "utils/ip.h"
-#include "utils/udp.h"
 
 
 using IpProto = bess::utils::Ipv4::Proto;
@@ -22,14 +20,13 @@ using ntf::utils::Stun;
 using ntf::utils::StunAttribute;
 
 
-static const uint64_t kTimeOutNs = 300ull * 1000 * 1000 * 1000;
-
-
 struct NetworkToken {
     uint8_t      reflect_type;
     uint32_t     app_id;
     const char * payload;
     size_t       payload_len;
+
+    static const uint64_t kTimeOutNs = 300ull * 1000 * 1000 * 1000;
 };
 
 
@@ -37,32 +34,6 @@ struct NetworkTokenHeader {
     be32_t header;
     char   payload[];
 };
-
-
-FlowId
-GetFlowId( const Ipv4 * ipv4 )
-{
-    size_t ip_bytes = (ipv4->header_length) << 2;
-    const Udp *udp = (const Udp*)( ((uint8_t*) ipv4) + ip_bytes );
-
-    FlowId id = {
-        ipv4->src.value(), ipv4->dst.value(),
-        udp->src_port.value(), udp->dst_port.value(),
-        ipv4->protocol
-    };
-
-    return id;
-}
-
-
-FlowId
-GetReverseFlowId( FlowId flow_id )
-{
-    FlowId reverse_flow_id = flow_id;
-    std::swap(reverse_flow_id.src_addr, reverse_flow_id.dst_addr);
-    std::swap(reverse_flow_id.src_tp,reverse_flow_id.dst_tp);
-    return reverse_flow_id;
-}
 
 
 void
@@ -418,7 +389,7 @@ NtfContext::ProcessPacket( void *     data,
             new_flow.last_refresh = now;
             new_flow.dscp = token_entry->dscp;
 
-            FlowId flow_id = GetFlowId( ipv4 );
+            FlowId flow_id( ipv4 );
             flowMap_.Insert( flow_id, new_flow );
             flowMap_.Insert( flow_id.Reverse(), new_flow );
 
@@ -440,7 +411,7 @@ NtfContext::ProcessPacket( void *     data,
 
     // If this flow is on the whitelist table, we need to set the DSCP
     // marking. We reset the DSCP marking for all other flows.
-    FlowId flow_id = GetFlowId( ipv4 );
+    FlowId flow_id( ipv4 );
     auto * hash_item = flowMap_.Find( flow_id );
     auto * hash_reverse_item = flowMap_.Find( flow_id.Reverse() );
 
@@ -463,7 +434,7 @@ NtfContext::ProcessPacket( void *     data,
     // lazily remove expired flows
     // TODO(@yiannis): we should check expired flows when adding
     // new flows as well.
-    if( now - hash_item->second.last_refresh> kTimeOutNs ) {
+    if( now - hash_item->second.last_refresh> NetworkToken::kTimeOutNs ) {
         DLOG(WARNING) << __FUNCTION__ << ": token expired";
         flowMap_.Remove( hash_item->first );
         flowMap_.Remove( hash_reverse_item->first );

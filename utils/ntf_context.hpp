@@ -3,16 +3,41 @@
 
 #include <list>
 #include <set>
-#include "utils/cuckoo_map.h"
 #include "ntf_api.h"
+
+// From BESS
+#include "utils/cuckoo_map.h"
+#include "utils/ip.h"
+#include "utils/udp.h"
 
 
 struct FlowId {
-    uint32_t src_addr;
-    uint32_t dst_addr;
-    uint16_t src_tp;
-    uint16_t dst_tp;
-    uint8_t protocol;
+    uint32_t src_addr = 0;
+    uint32_t dst_addr = 0;
+    uint16_t src_tp = 0;
+    uint16_t dst_tp = 0;
+    uint8_t protocol = 0;
+
+    using Ipv4 = bess::utils::Ipv4;
+    using Udp = bess::utils::Udp;
+
+    static size_t LengthFromIpv4( const Ipv4 * ipv4 ) {
+        return ipv4->header_length << 2;
+    }
+
+    static const Udp * UdpFromIpv4( const Ipv4 * ipv4 ) {
+        return (const Udp*)( ((uint8_t*) ipv4) + LengthFromIpv4( ipv4 ) );
+    }
+
+    FlowId() = default;
+    FlowId( const FlowId& ) = default;
+
+    FlowId( const Ipv4 * ipv4 )
+        : src_addr( ipv4->src.value() ),
+          dst_addr( ipv4->dst.value() ),
+          src_tp( UdpFromIpv4( ipv4 )->src_port.value() ),
+          dst_tp( UdpFromIpv4( ipv4 )->dst_port.value() ),
+          protocol( ipv4->protocol ) {}
 
     FlowId Reverse() const {
         FlowId id = *this;
