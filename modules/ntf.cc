@@ -26,6 +26,9 @@ using ntf::utils::AttributeTypes;
 using ntf::utils::Stun;
 using ntf::utils::StunAttribute;
 
+#undef DLOG
+#define DLOG LOG
+
 
 // Value to use to indicate no application was detected
 uint32_t APP_ID_NONE = 0x0;
@@ -55,6 +58,9 @@ NTF::Init(const ntf::pb::NTFArg &arg) {
 
     rule_id_attr = AddMetadataAttr("rule_id", sizeof(uint32_t), AccessMode::kWrite);
     sid_field = ntf_context_get_field_id( ntf_ctx, "sid" );
+
+    LOG(INFO) << "NTF initialized: dpid=" << dpid << " "
+                 "max_token_entries=" << max_token_entries;
     return CommandSuccess();
 };
 
@@ -70,10 +76,11 @@ NTF::CommandEntryCreate(const ntf::pb::NTFEntryCreateArg &arg) {
     const uint8_t dscp( arg.dscp() );
     const std::string key( arg.token().encryption_key() );
 
-    LOG(INFO) << " - Creating entry for: " << token_type;
+    DLOG(INFO) << " - Creating entry for: " << token_type;
     int ret = ntf_context_token_type_add(
             ntf_ctx, token_type, key.data(), key.size(), dscp );
     if( ret == 0 ) {
+        LOG(INFO) << "Creating entry for: " << token_type;
         return CommandSuccess();
     }
 
