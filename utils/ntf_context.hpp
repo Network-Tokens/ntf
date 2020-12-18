@@ -135,10 +135,10 @@ public:
 
     virtual ~NtfContext() {}
 
-    int AddTokenType( token_type_t token_type,
-                      const void * key,
-                      size_t       key_len,
-                      dscp_t       dscp );
+    int AddEntry( token_type_t token_type,
+                  const void * key,
+                  size_t       key_len,
+                  uint8_t      dscp );
 
     field_id_t GetFieldId( const std::string& name )
         { fields.push_back( name ); return fields.size(); }
@@ -151,8 +151,8 @@ public:
                         size_t *   field_value_len );
  
 
-    size_t TokenTypeCount() const { return tokenMap_.Count(); }
-    size_t WhitelistCount() const { return flowMap_.Count(); }
+    size_t EntryCount() const { return tokenMap_.Count(); }
+    size_t AllowListCount() const { return flowMap_.Count(); }
 
 private:
     void SetDscpMarking( void * data, size_t length, uint8_t dscp );
@@ -164,7 +164,7 @@ private:
     // Set of authoritative DSCP markings
     std::set<uint8_t> authoritative_dscp_markings;
 
-    // Per-flow soft state for flows already whitelisted by a token.
+    // Per-flow soft state for flows already allow-listed by a token.
     FlowTable flowMap_;
 
     // State for tokens.

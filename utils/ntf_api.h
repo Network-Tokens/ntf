@@ -18,15 +18,9 @@ typedef struct ntf_context_t ntf_context_t;
 
 
 /**
- * Identifies which application or service type within a token.
+ * Identifies the token type which will dictate how to decode a token.
  */
 typedef uint32_t token_type_t;
-
-
-/**
- * Type to use for DSCP value
- */
-typedef uint8_t dscp_t;
 
 /**
  * Type for a bound field in a network token
@@ -58,18 +52,18 @@ ntf_context_delete( ntf_context_t * ctx );
  * \param token_type Token type identifier.  This ID is present in the header
  * of a network token and is used to determine which key is used to decrypt the
  * token.
- * \param key Pointer to encryption key (JWT)
+ * \param key Pointer to encryption key (JWK)
  * \param key_len Length of encryption key
  * \param dscp If >0, indicate the DSCP value to set on packets of flows that
  * \return 0 on success, otherwise returns -1, with the reason in errno.
  * have presented valid network tokens.
  */
 int
-ntf_context_token_type_add( ntf_context_t * ctx,
-                            token_type_t    token_type,
-                            const void *    key,
-                            size_t          key_len,
-                            dscp_t          dscp );
+ntf_context_entry_add( ntf_context_t * ctx,
+                       token_type_t    token_type,
+                       const void *    key,
+                       size_t          key_len,
+                       uint8_t         dscp );
 
 
 /**
@@ -84,11 +78,11 @@ ntf_context_token_type_add( ntf_context_t * ctx,
  * have presented valid network tokens.
  */
 int
-ntf_context_token_type_modify( ntf_context_t * ctx,
-                               token_type_t    token_type,
-                               const void *    key,
-                               size_t          key_len,
-                               dscp_t          dscp );
+ntf_context_entry_modify( ntf_context_t * ctx,
+                          token_type_t    token_type,
+                          const void *    key,
+                          size_t          key_len,
+                          uint8_t         dscp );
 
 
 /**
@@ -99,8 +93,8 @@ ntf_context_token_type_modify( ntf_context_t * ctx,
  * have presented valid network tokens.
  */
 int
-ntf_context_token_type_remove( ntf_context_t * ctx,
-                               token_type_t    token_type );
+ntf_context_entry_remove( ntf_context_t * ctx,
+                          token_type_t    token_type );
 
 
 /**
@@ -138,9 +132,9 @@ ntf_context_get_field_id( ntf_context_t * ctx,
  * field is to be retrieved.
  * \param length The length of the packet pointed to by data
  * \param now The current timestamp in nanoseconds
- * \param field_value If the packet belongs to a whitelisted flow and the field
- * matching field_id was found in the network token payload, the value of the
- * field will be copied to the location specified by field_value.
+ * \param field_value If the packet belongs to flow on the allowlist and the
+ * field matching field_id was found in the network token payload, the value of
+ * the field will be copied to the location specified by field_value.
  * \param field_value_len If the field value is returned via field_value, the
  * length of that value will be placed in field_value_len.
  * \return The token type for the flow, or 0 if there is no network token in
@@ -164,17 +158,17 @@ ntf_process_packet( ntf_context_t * ctx,
  * \return Number of application keys that have been registered with this NTF
  */
 size_t
-ntf_context_token_type_count( const ntf_context_t * ctx );
+ntf_context_entry_count( const ntf_context_t * ctx );
 
 
 /**
  * Returns the number of flows that have presented a valid network token and
- * are currently white-listed.
+ * are currently allow-listed.
  * \param ctx NTF context
- * \return Number of flows currently whitelisted
+ * \return Number of flows currently on the allow list
  */
 size_t
-ntf_context_whitelist_count( const ntf_context_t * ctx );
+ntf_context_allowlist_count( const ntf_context_t * ctx );
 
 
 #ifdef __cplusplus

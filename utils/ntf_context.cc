@@ -52,10 +52,10 @@ NtfFlowEntry::SetFieldData( field_id_t   id,
 
 
 int
-NtfContext::AddTokenType( token_type_t token_type,
-                          const void *   key,
-                          size_t         key_len,
-                          dscp_t         dscp )
+NtfContext::AddEntry( token_type_t token_type,
+                      const void *   key,
+                      size_t         key_len,
+                      uint8_t        dscp )
 {
     if (tokenMap_.Find(token_type)) {
         errno = EEXIST;
@@ -411,14 +411,14 @@ NtfContext::ProcessPacket( void *     data,
         return false;
     }
 
-    // If this flow is on the whitelist table, we need to set the DSCP
+    // If this flow is on the allowlist table, we need to set the DSCP
     // marking. We reset the DSCP marking for all other flows.
     FlowId flow_id( ipv4 );
     auto * hash_item = flowMap_.Find( flow_id );
     auto * hash_reverse_item = flowMap_.Find( flow_id.Reverse() );
 
     if( !hash_item ) {
-        DLOG(WARNING) << __FUNCTION__ << ": flow not whitelisted";
+        DLOG(WARNING) << __FUNCTION__ << ": flow not allowlisted";
         ResetDscpMarking( data, length );
         return false;
     }

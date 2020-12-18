@@ -56,7 +56,7 @@ using bess::utils::be32_t;
  * operator can use a service ID attribute to determine which action to take
  * for the flow.
  *
- * Upon detection of whitelisted traffic, the DSCP codepoint can be set on
+ * Upon detection of allowed traffic, the DSCP codepoint can be set on
  * applicable packets.
  *
  * To prevent abuse, NTF assumes authoritative actions with regards to DSCP

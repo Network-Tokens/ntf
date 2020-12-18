@@ -9,12 +9,12 @@ TEST(NtfContextUsage) {
     ntf_context_t * ctx = ntf_context_new( 10 );
     CHECK( ctx );
 
-    int ret = ntf_context_token_type_add( ctx, 0xB00F, key.data(), key.size(), 42 );
+    int ret = ntf_context_entry_add( ctx, 0xB00F, key.data(), key.size(), 42 );
     CHECK_EQUAL( 0, ret );
 
-    // We should have a single key with no flows in the whitelist
-    CHECK_EQUAL( 1U, ntf_context_token_type_count( ctx ) );
-    CHECK_EQUAL( 0U, ntf_context_whitelist_count( ctx ) );
+    // We should have a single key with no flows in the allowlist
+    CHECK_EQUAL( 1U, ntf_context_entry_count( ctx ) );
+    CHECK_EQUAL( 0U, ntf_context_allowlist_count( ctx ) );
 
     // We want to fetch the 'sid' field from the payload of valid tokens to
     // match against to determine which service ID/QoS policy to apply.
@@ -41,11 +41,11 @@ TEST(NtfContextUsage) {
     uint64_t sid = * (uint64_t*) field_value;
     CHECK_EQUAL( 0xD00D, sid );
 
-    // We should have a new entry in the whitelist for the packet, and another
+    // We should have a new entry in the allow list for the packet, and another
     // entry for the reverse flow.
-    CHECK_EQUAL( 2U, ntf_context_whitelist_count( ctx ) );
+    CHECK_EQUAL( 2U, ntf_context_allowlist_count( ctx ) );
 
-    // If the packet is processed again, the entry count in the flow whitelist
+    // If the packet is processed again, the entry count in the flow allowlist
     // should not increase
     CHECK(
         ntf_process_packet( ctx,
@@ -54,7 +54,7 @@ TEST(NtfContextUsage) {
             &field_value, &field_value_len
         )
     );
-    CHECK_EQUAL( 2U, ntf_context_whitelist_count( ctx ) );
+    CHECK_EQUAL( 2U, ntf_context_allowlist_count( ctx ) );
 
     // Create another packet... This one we will blank out the token, so it
     // will be a very boring packet with no token data in it.

@@ -37,13 +37,13 @@ ntf_context_delete( ntf_context_t * ptr )
  * tokens for this application/service type.
  */
 int
-ntf_context_token_type_add( ntf_context_t *  ptr,
-                     token_type_t   token_type,
-                     const void *     key,
-                     size_t           key_len,
-                     dscp_t           dscp )
+ntf_context_entry_add( ntf_context_t *  ptr,
+                       token_type_t     token_type,
+                       const void *     key,
+                       size_t           key_len,
+                       uint8_t          dscp )
 {
-    return ptr->ctx.AddTokenType( token_type, key, key_len, dscp );
+    return ptr->ctx.AddEntry( token_type, key, key_len, dscp );
 }
 
 
@@ -51,11 +51,11 @@ ntf_context_token_type_add( ntf_context_t *  ptr,
  * Updates an application already added to an NTF context.
  */
 int
-ntf_context_token_type_modify( ntf_context_t *  /* ctx */,
-                        token_type_t   /* token_type */,
-                        const void *     /* key */,
-                        size_t           /* key_len */,
-                        dscp_t           /* dscp */ )
+ntf_context_entry_modify( ntf_context_t *  /* ctx */,
+                          token_type_t     /* token_type */,
+                          const void *     /* key */,
+                          size_t           /* key_len */,
+                          uint8_t          /* dscp */ )
 {
     errno = ENOTSUP;
     return -1;
@@ -67,8 +67,8 @@ ntf_context_token_type_modify( ntf_context_t *  /* ctx */,
  * Removes an application from an NTF context.
  */
 int
-ntf_context_token_type_remove( ntf_context_t *  /* ctx */,
-                        token_type_t   /* token_type */ )
+ntf_context_entry_remove( ntf_context_t *  /* ctx */,
+                          token_type_t     /* token_type */ )
 {
     errno = ENOTSUP;
     return -1;
@@ -97,20 +97,20 @@ ntf_process_packet( ntf_context_t * ptr,
  * context.
  */
 size_t
-ntf_context_token_type_count( const ntf_context_t * ptr )
+ntf_context_entry_count( const ntf_context_t * ptr )
 {
-    return ptr->ctx.TokenTypeCount();
+    return ptr->ctx.EntryCount();
 }
 
 
 /**
  * Returns the number of flows that have presented a valid network token and
- * are currently white-listed.
+ * are currently on the allow list.
  */
 size_t
-ntf_context_whitelist_count( const ntf_context_t * ptr )
+ntf_context_allowlist_count( const ntf_context_t * ptr )
 {
-    return ptr->ctx.WhitelistCount();
+    return ptr->ctx.AllowListCount();
 }
 
 

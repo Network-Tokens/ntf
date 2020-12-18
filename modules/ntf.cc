@@ -74,7 +74,7 @@ NTF::CommandEntryCreate(const ntf::pb::NTFEntryCreateArg &arg) {
     const std::string key( arg.token().encryption_key() );
 
     DLOG(INFO) << " - Creating entry for: " << token_type;
-    int ret = ntf_context_token_type_add(
+    int ret = ntf_context_entry_add(
             ntf_ctx, token_type, key.data(), key.size(), dscp );
     if( ret == 0 ) {
         LOG(INFO) << "Creating entry for: " << token_type;
@@ -104,7 +104,7 @@ NTF::CommandEntryModify(const ntf::pb::NTFEntryModifyArg &arg) {
     const std::string key( arg.token().encryption_key() );
 
     LOG(INFO) << " - Updating entry for: " << token_type;
-    int ret = ntf_context_token_type_modify(
+    int ret = ntf_context_entry_modify(
             ntf_ctx, token_type, key.data(), key.size(), dscp );
     if( ret == 0 ) {
         return CommandSuccess();
@@ -125,7 +125,7 @@ NTF::CommandEntryDelete(const ntf::pb::NTFEntryDeleteArg &arg) {
     const uint32_t token_type( arg.token_type() );
 
     LOG(INFO) << " - Removing entry for: " << token_type;
-    int ret = ntf_context_token_type_remove( ntf_ctx, token_type );
+    int ret = ntf_context_entry_remove( ntf_ctx, token_type );
     if( ret == 0 ) {
         return CommandSuccess();
     }
@@ -171,9 +171,9 @@ void NTF::ProcessBatch(Context *ctx, bess::PacketBatch *batch) {
 
 std::string NTF::GetDesc() const {
     return bess::utils::Format(
-        "%zu keys, %zu whitelisted flows",
-        ntf_context_token_type_count( ntf_ctx ),
-        ntf_context_whitelist_count( ntf_ctx )
+        "%zu entries, %zu flows",
+        ntf_context_entry_count( ntf_ctx ),
+        ntf_context_allowlist_count( ntf_ctx )
     );
 }
 
