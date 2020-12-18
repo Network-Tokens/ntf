@@ -55,6 +55,7 @@ ntf_context_delete( ntf_context_t * ctx );
  * \param key Pointer to encryption key (JWK)
  * \param key_len Length of encryption key
  * \param dscp If >0, indicate the DSCP value to set on packets of flows that
+ * have a valid token.
  * \return 0 on success, otherwise returns -1, with the reason in errno.
  * have presented valid network tokens.
  */
