@@ -1,6 +1,4 @@
-file(GLOB NTF_UTILS_SRCS *.cc)
-
-add_library(utils ${NTF_UTILS_SRCS})
+file(GLOB NTF_API_SRCS *.cc)
 
 # We are using BESS's Cuckoo map, which is contained in a header file.  For now
 # include from BESS directly, but we might want to either copy this or grab an
@@ -12,7 +10,8 @@ include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}/../../bess/deps/dpdk-19.11.4/build/include
 )
 
-target_link_libraries( utils
+add_library(api ${NTF_API_SRCS})
+target_link_libraries( api
     pthread cjose jansson
     ${CMAKE_CURRENT_SOURCE_DIR}/../../bess/core/bess.a
     -rdynamic -L/opt/bess/deps/dpdk-19.11.4/build/lib

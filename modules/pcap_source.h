@@ -49,6 +49,15 @@ private:
     // Same as src_addr but for IPv6
     std::string src_addr6;
 
+    // Whether or not any IP address rewriting is enabled
+    bool rewrite_any = false;
+
+    // If set, these can override the source & dest IP address
+    std::string rewrite_src_addr, rewrite_dst_addr;
+
+    // Same as rewrite_*_addr but for IPv6
+    std::string rewrite_src_addr6, rewrite_dst_addr6;
+
     // Pointer to raw data of next packet (from pcap file)
     const u_char* next_packet;
 

@@ -6,4 +6,6 @@ message PcapSourceArg {
   string filename = 1;
   bool reverse = 2;
   repeated string src_ip = 3;
+  repeated string rewrite_src = 4;
+  repeated string rewrite_dst = 5;
 }
