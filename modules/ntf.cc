@@ -107,13 +107,16 @@ NTF::CommandEntryModify(const ntf::pb::NTFEntryModifyArg &arg) {
     int ret = ntf_context_entry_modify(
             ntf_ctx, token_type, key.data(), key.size(), dscp );
     if( ret == 0 ) {
+        LOG(INFO) << "   - success";
         return CommandSuccess();
     }
 
     switch( errno ) {
     case ENOENT:
+        LOG(INFO) << "   - failure: doesn't exist";
         return CommandFailure(-1, "token with token_type does not exist --- use entry_create instead");
     default:
+        LOG(INFO) << "   - failure: unknown error: " << errno;
         return CommandFailure(ret, "unknown error");
     }
 }
@@ -127,13 +130,16 @@ NTF::CommandEntryDelete(const ntf::pb::NTFEntryDeleteArg &arg) {
     LOG(INFO) << " - Removing entry for: " << token_type;
     int ret = ntf_context_entry_remove( ntf_ctx, token_type );
     if( ret == 0 ) {
+        LOG(INFO) << "   - success";
         return CommandSuccess();
     }
 
     switch( errno ) {
     case ENOENT:
+        LOG(INFO) << "   - failure: doesn't exist";
         return CommandFailure(-1, "cannot find token with this token_type");
     default:
+        LOG(INFO) << "   - failure: unknown error: " << errno;
         return CommandFailure(ret, "unknown error");
     }
 }
