@@ -141,7 +141,7 @@ NtfContext::DeleteEntry( token_type_t token_type )
     }
 
     tokenMap_.Remove( token_type );
-    DLOG(WARNING) << "Entry removed for 0x" << std::hex << entry.token_type << std::dec;
+    DLOG(WARNING) << "Entry removed for 0x" << std::hex << token_type << std::dec;
     UpdateAuthoritativeDscpMarkings();
     errno = 0;
     return 0;
