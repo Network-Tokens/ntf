@@ -51,7 +51,7 @@ ntf_context_entry_add( ntf_context_t * ptr,
  * Updates an application already added to an NTF context.
  */
 int
-ntf_context_entry_modify( ntf_context_t * ctx,
+ntf_context_entry_modify( ntf_context_t * ptr,
                           token_type_t    token_type,
                           const void *    key,
                           size_t          key_len,
@@ -65,7 +65,7 @@ ntf_context_entry_modify( ntf_context_t * ctx,
  * Removes an application from an NTF context.
  */
 int
-ntf_context_entry_remove( ntf_context_t * ctx,
+ntf_context_entry_remove( ntf_context_t * ptr,
                           token_type_t    token_type )
 {
     return ptr->ctx.DeleteEntry( token_type );
