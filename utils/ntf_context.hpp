@@ -140,6 +140,13 @@ public:
                   size_t       key_len,
                   uint8_t      dscp );
 
+    int ModifyEntry( token_type_t token_type,
+                     const void * key,
+                     size_t       key_len,
+                     uint8_t      dscp );
+
+    int DeleteEntry( token_type_t token_type );
+
     field_id_t GetFieldId( const std::string& name )
         { fields.push_back( name ); return fields.size(); }
 
