@@ -10,9 +10,6 @@
 #include "utils/endian.h"
 #include "utils/ether.h"
 
-#undef DLOG
-#define DLOG LOG
-
 
 using IpProto = bess::utils::Ipv4::Proto;
 using bess::utils::Ethernet;
@@ -419,11 +416,6 @@ NtfContext::ProcessPacket( void *     data,
     NetworkToken token;
     UserCentricNetworkTokenEntry * token_entry = nullptr;
     json_t * payload = nullptr;
-
-    // TEMP DEBUG:
-    if( length == 320 || length == 324 ) {
-        DLOG(WARNING) << __FUNCTION__ << " breakpoint";
-    }
 
     if(
         CheckForIpv4( (uint8_t*) data, length, ipv4 ) &&

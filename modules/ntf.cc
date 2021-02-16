@@ -17,10 +17,6 @@
 #include "utils/udp.h"
 
 
-#undef DLOG
-#define DLOG LOG
-
-
 using bess::utils::be16_t;
 using bess::utils::Ethernet;
 using bess::utils::Ipv4;
