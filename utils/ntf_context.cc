@@ -10,6 +10,9 @@
 #include "utils/endian.h"
 #include "utils/ether.h"
 
+#undef DLOG
+#define DLOG LOG
+
 
 using IpProto = bess::utils::Ipv4::Proto;
 using bess::utils::Ethernet;
@@ -19,6 +22,9 @@ using bess::utils::be32_t;
 using ntf::utils::AttributeTypes;
 using ntf::utils::Stun;
 using ntf::utils::StunAttribute;
+
+
+static const size_t GTP_HEADER_SIZE = 8;
 
 
 struct NetworkToken {
@@ -106,6 +112,26 @@ NtfContext::UpdateAuthoritativeDscpMarkings()
 
 
 bool
+CheckPacketForGTP( const uint8_t * data,
+                   size_t          length )
+{
+    // For GTP check, we check the first byte - bit 5 is GTP rel 99, bit 4 is
+    // protocol type GTP, and the second byte for 0xFF (message type = T-PDU)
+    const uint8_t VERSION_REL_99 = 1 << 5;
+    const uint8_t PROTO_TYPE_GTP = 1 << 4;
+
+    const uint8_t FLAGS = (VERSION_REL_99 | PROTO_TYPE_GTP);
+    const uint8_t MSG_TYPE_T_PDU = 0xFF;
+    const size_t GTP_HEADER_LENGTH = 8;
+
+    return length > GTP_HEADER_LENGTH &&
+        (data[0] & FLAGS) == FLAGS &&
+        data[1] == MSG_TYPE_T_PDU
+    ;
+}
+
+
+bool
 CheckForIpv4( uint8_t * data,
               size_t    length,
               Ipv4 *&   ipv4 )
@@ -131,6 +157,25 @@ CheckForIpv4( uint8_t * data,
         DLOG(WARNING) << __FUNCTION__ << ": not UDP/IPv4";
         return false;
     }
+
+    offset += (ip->header_length << 2) + sizeof(Udp);
+
+    // Is this packet GTP-encapsulated?
+    if( CheckPacketForGTP( data + offset, length - offset ) ) {
+        // Packet is GTP encapsulated.  Skip the header & parse the inner
+        // packet.
+        offset += GTP_HEADER_SIZE;
+        ip = (Ipv4*)( data + offset );
+
+        if(
+            length > sizeof(Ipv4) &&
+            ip->protocol != IpProto::kUdp
+        ) {
+            DLOG(WARNING) << __FUNCTION__ << ": not UDP/IPv4";
+            return false;
+        }
+    }
+
     ipv4 = ip;
     return true;
 }
@@ -143,7 +188,8 @@ CheckPacketForNetworkToken( const uint8_t * data,
                             NetworkToken &  token )
 {
     size_t offset = ((uint8_t*) ipv4) - data;
-    DCHECK( offset <= sizeof(Ethernet) );
+    const size_t STUN_PACKET_MIN(sizeof(Udp) + sizeof(Stun));
+    size_t udp_length = 0;
 
     if( !ipv4 || ipv4->protocol != IpProto::kUdp ) {
         DLOG(WARNING) << __FUNCTION__ << ": not UDP/IPv4";
@@ -157,20 +203,21 @@ CheckPacketForNetworkToken( const uint8_t * data,
 
     // For this to be a STUN message with an attribute, it needs to be > 28
     // bytes 8 bytes for UDP header and 20 bytes for STUN message, and more for
-    // attribute.
-    const size_t STUN_PACKET_MIN(sizeof(Udp) + sizeof(Stun));
+    // attribute. TODO(@aaron): I think the check below eliminates the need for
+    // this one... recheck after GTP encapsulated packet support.
     if (udp->length.value() <= STUN_PACKET_MIN) {
         DLOG(WARNING) << __FUNCTION__ << ": packet too short";
         return false;
     }
-
     offset += sizeof(Udp);
+    udp_length = udp->length.value();
 
     // Try to interpret this as a STUN message. Is it a valid STUN message
     // length?  TODO(@yiannis): check that message type is also valid.
     const Stun *stun = (const Stun*)( data + offset );
-    if (stun->message_length.value() != udp->length.value() - STUN_PACKET_MIN) {
+    if (stun->message_length.value() != udp_length - STUN_PACKET_MIN) {
         DLOG(WARNING) << __FUNCTION__ << ": truncated STUN message";
+        DLOG(WARNING) << " - stun->message_length: " << stun->message_length.value() << ", udp->length: " << udp_length;
         return false;
     }
 
@@ -372,6 +419,11 @@ NtfContext::ProcessPacket( void *     data,
     NetworkToken token;
     UserCentricNetworkTokenEntry * token_entry = nullptr;
     json_t * payload = nullptr;
+
+    // TEMP DEBUG:
+    if( length == 320 || length == 324 ) {
+        DLOG(WARNING) << __FUNCTION__ << " breakpoint";
+    }
 
     if(
         CheckForIpv4( (uint8_t*) data, length, ipv4 ) &&
