@@ -250,6 +250,8 @@ CheckPacketForNetworkToken( const uint8_t * data,
             token.payload = token_header->payload;
             token.payload_len = attribute->length.value() -
                 sizeof(token_header->header);
+            DLOG(WARNING) << __FUNCTION__ << ": found token with token_type: 0x" << std::hex
+                          << token.token_type << std::dec;
             return true;
         }
 
@@ -282,6 +284,11 @@ CheckTokenAppId( const NetworkToken &            token,
     if( !hash_item ) {
         DLOG(WARNING) << __FUNCTION__ << ": no token_type: 0x" << std::hex
                       << token.token_type << std::dec;
+        DLOG(WARNING) << __FUNCTION__ << ": possible types are:";
+        for( const auto& it = token_table.begin(); it != token_table.end(); ++it ) {
+            DLOG(WARNING) << __FUNCTION__ << " - 0x" << std::hex
+                          << it.first << std::dec;
+        }
         return false;
     }
 
