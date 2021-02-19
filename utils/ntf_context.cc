@@ -518,7 +518,8 @@ NtfContext::ProcessPacket( void *     data,
     }
 
     DLOG(WARNING) << __FUNCTION__ << ": setting dscp: 0x" << std::hex
-                  << (unsigned short) hash_item->second.dscp << std::dec;
+                  << (unsigned short) hash_item->second.dscp << std::dec
+                  << " on IP packet at offset: " << ((char*)ipv4 - (char*)data);
     SetDscpMarking( ipv4, hash_item->second.dscp );
     hash_item->second.last_refresh = now;
     hash_reverse_item->second.last_refresh = now;
