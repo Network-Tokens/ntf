@@ -56,9 +56,9 @@ NtfFlowEntry::SetFieldData( field_id_t   id,
 
 int
 NtfContext::AddEntry( token_type_t token_type,
-                      const void *   key,
-                      size_t         key_len,
-                      uint8_t        dscp )
+                      const void * key,
+                      size_t       key_len,
+                      uint8_t      dscp )
 {
     if (tokenMap_.Find(token_type)) {
         errno = EEXIST;
@@ -89,7 +89,8 @@ NtfContext::AddEntry( token_type_t token_type,
         return -1;
     }
 
-    DLOG(WARNING) << "Entry inserted for 0x" << std::hex << entry.token_type << std::dec;
+    DLOG(WARNING) << "Entry inserted for 0x" << std::hex << entry.token_type
+                  << ", dscp: 0x" << (int) dscp << std::dec;
 
     UpdateAuthoritativeDscpMarkings();
     errno = 0;
@@ -142,20 +143,32 @@ CheckForIpv4( uint8_t * data,
     ) {
         offset += sizeof(Ethernet);
         length -= sizeof(Ethernet);
+        DLOG(WARNING) << __FUNCTION__ << ": Found ethernet packet, offset is " << offset;
     }
 
     // Check for IP packet.  TODO: Checking for the protocol only might be
     // unreliable so maybe we should verify the checksum?
     Ipv4 *ip = (Ipv4*)( data + offset );
-    if(
-        length > sizeof(Ipv4) &&
-        ip->protocol != IpProto::kUdp
-    ) {
-        DLOG(WARNING) << __FUNCTION__ << ": not UDP/IPv4";
+    if(length < sizeof(Ipv4)) {
+        DLOG(WARNING) << __FUNCTION__ << ": not IPv4 (too short)";
         return false;
     }
 
+    switch( ip->protocol ) {
+    case IpProto::kUdp:
+      // Okay
+      break;
+    case IpProto::kTcp:
+      // Not okay, but worth logging for debugging
+      DLOG(WARNING) << __FUNCTION__ << ": not UDP/IPv4 (TCP)";
+      return false;
+    default:
+      DLOG(WARNING) << __FUNCTION__ << ": not UDP/IPv4 (unsupported protocol)";
+      return false;
+    }
+
     offset += (ip->header_length << 2) + sizeof(Udp);
+    DLOG(WARNING) << __FUNCTION__ << ": Found UDP, offset is " << offset;
 
     // Is this packet GTP-encapsulated?
     if( CheckPacketForGTP( data + offset, length - offset ) ) {
@@ -268,6 +281,8 @@ CheckTokenAppId( const NetworkToken &            token,
         return false;
     }
 
+    DLOG(WARNING) << __FUNCTION__ << "Found token type: 0x" << std::hex
+        << token.token_type << ", dscp: 0x" << (unsigned short) hash_item->second.dscp << std::dec;
     entry = &hash_item->second;
     return true;
 }
@@ -463,14 +478,14 @@ NtfContext::ProcessPacket( void *     data,
 
     if( !hash_item ) {
         DLOG(WARNING) << __FUNCTION__ << ": flow not allowlisted";
-        ResetDscpMarking( data, length );
+        ResetDscpMarking( ipv4 );
         return false;
     }
 
     // If we're looking for a different bound field, reject.
     if( field_id && field_id != hash_item->second.field_id ) {
         DLOG(WARNING) << __FUNCTION__ << ": field not bound on flow";
-        ResetDscpMarking( data, length );
+        ResetDscpMarking( ipv4 );
         return false;
     }
 
@@ -484,11 +499,13 @@ NtfContext::ProcessPacket( void *     data,
         DLOG(WARNING) << __FUNCTION__ << ": token expired";
         flowMap_.Remove( hash_item->first );
         flowMap_.Remove( hash_reverse_item->first );
-        ResetDscpMarking( data, length );
+        ResetDscpMarking( ipv4 );
         return false;
     }
 
-    SetDscpMarking( data, length, hash_item->second.dscp );
+    DLOG(WARNING) << __FUNCTION__ << ": setting dscp: 0x" << std::hex
+                  << (unsigned short) hash_item->second.dscp << std::dec;
+    SetDscpMarking( ipv4, hash_item->second.dscp );
     hash_item->second.last_refresh = now;
     hash_reverse_item->second.last_refresh = now;
 
@@ -501,12 +518,10 @@ NtfContext::ProcessPacket( void *     data,
 
 
 void
-NtfContext::ResetDscpMarking( void * data, size_t length )
+NtfContext::ResetDscpMarking( Ipv4 * ip )
 {
     DLOG(INFO) << __FUNCTION__;
-    DCHECK( length > sizeof(Ethernet) + sizeof(Ipv4) );
 
-    Ipv4 *ip = (Ipv4*)( (uint8_t*) data + sizeof(Ethernet) );
     // Do nothing if TOS is 0.
     // This will be the most common, so check first to avoid set lookup.
     if (ip->type_of_service == 0) {
@@ -522,10 +537,7 @@ NtfContext::ResetDscpMarking( void * data, size_t length )
 
 
 void
-NtfContext::SetDscpMarking( void * data, size_t length, uint8_t dscp )
+NtfContext::SetDscpMarking( Ipv4 * ip, uint8_t dscp )
 {
-    DCHECK( length > sizeof(Ethernet) + sizeof(Ipv4) );
-
-    Ipv4 *ip = (Ipv4*)( (uint8_t*) data + sizeof(Ethernet) );
     ip->type_of_service = dscp;
 }

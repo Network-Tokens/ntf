@@ -108,6 +108,8 @@ struct UserCentricNetworkTokenEntry {
     UserCentricNetworkTokenEntry &operator=( const UserCentricNetworkTokenEntry& o ) {
         if( this != &o ) {
             cjose_err error;
+            dscp = o.dscp;
+            token_type = o.token_type;
             jwk = cjose_jwk_retain( o.jwk, &error );
         }
         return *this;
@@ -155,8 +157,8 @@ public:
     size_t AllowListCount() const { return flowMap_.Count(); }
 
 private:
-    void SetDscpMarking( void * data, size_t length, uint8_t dscp );
-    void ResetDscpMarking( void * data, size_t length );
+    void SetDscpMarking( bess::utils::Ipv4 * ipv4, uint8_t dscp );
+    void ResetDscpMarking( bess::utils::Ipv4 * ipv4 );
 
     // Recalculate authoritative_dscp_markings from the tokens in tokenMap_
     void UpdateAuthoritativeDscpMarkings();

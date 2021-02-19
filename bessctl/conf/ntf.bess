@@ -1,26 +1,29 @@
 # License : Apache-2.0
 # Copyright(c) 2020 Selfie Networks, Inc
 
-src_ip = ["172.31.0.3"]
-
-pcap_file = "/opt/ntf/pcap-samples/network-token-sample.pcap"
+pcap_file = "/opt/ntf/pcap-samples/jitsi-call-updated-5.pcap"
+src_ip = ["10.128.0.4"]
+ether_encap = False
 
 ntf::NTF(dpid=1, max_entries=5)
-ntf.entry_create(dscp=0x1a, rule_id=0xbeefb00f, token={
-  'token_type': 0x10001,
-  'encryption_key': '{"alg":"A128CBC-HS256","k":"Qr_XwDGctna3SlR88rEJYt6Zm100SASYeJWSJihDnsA","kty":"oct"}'
+ntf.entry_create(dscp=42, rule_id=0xB00F, token={
+  'token_type': 0xB00F,
+  'encryption_key': '{"alg":"A128CBC-HS256","k":"_m-oZljsyhkMMv9JwFhZxKLmaWKl26dMhwBRZpZZYKI","kty":"oct"}'
 })
 
 p_up::PcapSource(filename=pcap_file, src_ip=src_ip, reverse=False) \
-   -> merge::Merge() \
-   -> GenericEncap(fields=[
+   -> merge::Merge()
+_in = merge
+if ether_encap:
+  _in -> encap::GenericEncap(fields=[
         {'size': 6, 'value': {'value_int': 0x000000000000}},
         {'size': 6, 'value': {'value_int': 0x000000000000}},
         {'size': 2, 'value': {'value_int': 0x0800}}
-      ]) \
-   -> ntf \
-   -> IPChecksum() \
-   -> sink::Sink()
+      ])
+  _in = encap
+_in -> ntf \
+    -> IPChecksum() \
+    -> sink::Sink()
 
 p_down::PcapSource(filename=pcap_file, src_ip=src_ip, reverse=True) \
   -> merge
