@@ -11,6 +11,10 @@
 #include "utils/ether.h"
 
 
+#undef DLOG
+#define DLOG LOG
+
+
 using IpProto = bess::utils::Ipv4::Proto;
 using bess::utils::Ethernet;
 using bess::utils::Ipv4;
