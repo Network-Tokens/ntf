@@ -181,13 +181,16 @@ CheckForIpv4( uint8_t * data,
         offset += GTP_HEADER_SIZE;
         ip = (Ipv4*)( data + offset );
 
+        DLOG(WARNING) << __FUNCTION__ << ": GTP encapsulated, inner IPv4: " << offset;
+
         if(
             length > sizeof(Ipv4) &&
             ip->protocol != IpProto::kUdp
         ) {
-            DLOG(WARNING) << __FUNCTION__ << ": not UDP/IPv4";
+            DLOG(WARNING) << __FUNCTION__ << ": GTP: not UDP/IPv4";
             return false;
         }
+        DLOG(WARNING) << __FUNCTION__ << ": Found UDP (GTP), offset is " << offset + (ip->header_length << 2) + sizeof(Udp);
     }
 
     ipv4 = ip;
