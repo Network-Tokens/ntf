@@ -102,6 +102,60 @@ NtfContext::AddEntry( token_type_t token_type,
 }
 
 
+int
+NtfContext::ModifyEntry( token_type_t token_type,
+                         const void * key,
+                         size_t       key_len,
+                         uint8_t      dscp )
+{
+    if (!tokenMap_.Find(token_type)) {
+        errno = ENOENT;
+        return -1;
+    }
+
+    cjose_err error;
+    cjose_jwk_t *jwk = cjose_jwk_import( (const char*) key, key_len, &error );
+    if( !jwk ) {
+        errno = EINVAL;
+        return -1;
+    }
+
+    UserCentricNetworkTokenEntry entry;
+    entry.token_type = token_type;
+    entry.jwk = jwk;
+    entry.dscp = dscp;
+    // TODO: Something about entry.blacklist...
+
+    if (!tokenMap_.Insert(entry.token_type, entry)) {
+        errno = EAGAIN;
+        LOG(WARNING) << "Failed to update entry";
+        return -1;
+    }
+
+    DLOG(WARNING) << "Entry updated for 0x" << std::hex << entry.token_type << std::dec;
+
+    UpdateAuthoritativeDscpMarkings();
+    errno = 0;
+    return 0;
+}
+
+
+int
+NtfContext::DeleteEntry( token_type_t token_type )
+{
+    if (!tokenMap_.Find(token_type)) {
+        errno = ENOENT;
+        return -1;
+    }
+
+    tokenMap_.Remove( token_type );
+    DLOG(WARNING) << "Entry removed for 0x" << std::hex << token_type << std::dec;
+    UpdateAuthoritativeDscpMarkings();
+    errno = 0;
+    return 0;
+}
+
+
 void
 NtfContext::UpdateAuthoritativeDscpMarkings()
 {
