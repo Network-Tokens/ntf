@@ -1,3 +1,4 @@
+#include <arpa/inet.h>
 #include <cmath>
 #include <errno.h>
 #include <jansson.h>
@@ -508,6 +509,7 @@ NtfContext::ProcessPacket( void *     data,
         CheckTokenExpiration( payload, now ) &&
         CheckBoundIp( payload, ipv4 )
     ) {
+
         NtfFlowEntry new_flow;
         if(
             field_id == 0 ||
@@ -525,6 +527,20 @@ NtfContext::ProcessPacket( void *     data,
                           << std::hex << token.token_type
                           << " --- marking packets with DSCP 0x"
                           << (uint16_t) new_flow.dscp << std::dec;
+
+            struct in_addr src_addr { .s_addr = htonl(flow_id.src_addr) };
+            struct in_addr dst_addr { .s_addr = htonl(flow_id.dst_addr) };
+            struct in_addr src_r_addr { .s_addr = htonl(flow_id.Reverse().src_addr) };
+            struct in_addr dst_r_addr { .s_addr = htonl(flow_id.Reverse().dst_addr) };
+
+            DLOG(WARNING) << "Whitelisted flow: "
+                          << inet_ntoa( src_addr ) << ":" << htons(flow_id.src_tp)
+                          << ":"
+                          << inet_ntoa( dst_addr ) << ":" << htons(flow_id.dst_tp);
+            DLOG(WARNING) << "Whitelisted reverse flow: "
+                          << inet_ntoa( src_r_addr ) << ":" << htons(flow_id.Reverse().src_tp)
+                          << ":"
+                          << inet_ntoa( dst_r_addr ) << ":" << htons(flow_id.Reverse().dst_tp);
         }
     }
 
@@ -543,6 +559,13 @@ NtfContext::ProcessPacket( void *     data,
     FlowId flow_id( ipv4 );
     auto * hash_item = flowMap_.Find( flow_id );
     auto * hash_reverse_item = flowMap_.Find( flow_id.Reverse() );
+
+    struct in_addr src_addr { .s_addr = htonl(flow_id.src_addr) };
+    struct in_addr dst_addr { .s_addr = htonl(flow_id.dst_addr) };
+    DLOG(WARNING) << "Checking for flow: "
+                  << inet_ntoa( src_addr ) << ":" << htons(flow_id.src_tp)
+                  << ":"
+                  << inet_ntoa( dst_addr ) << ":" << htons(flow_id.dst_tp);
 
     if( !hash_item ) {
         DLOG(WARNING) << __FUNCTION__ << ": flow not allowlisted";
