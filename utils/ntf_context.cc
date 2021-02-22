@@ -12,10 +12,6 @@
 #include "utils/ether.h"
 
 
-#undef DLOG
-#define DLOG LOG
-
-
 using IpProto = bess::utils::Ipv4::Proto;
 using bess::utils::Ethernet;
 using bess::utils::Ipv4;
@@ -534,13 +530,13 @@ NtfContext::ProcessPacket( void *     data,
             struct in_addr dst_r_addr { .s_addr = htonl(flow_id.Reverse().dst_addr) };
 
             DLOG(WARNING) << "Whitelisted flow: "
-                          << inet_ntoa( src_addr ) << ":" << htons(flow_id.src_tp)
+                          << inet_ntoa( src_addr ) << ":" << flow_id.src_tp
                           << ":"
-                          << inet_ntoa( dst_addr ) << ":" << htons(flow_id.dst_tp);
+                          << inet_ntoa( dst_addr ) << ":" << flow_id.dst_tp;
             DLOG(WARNING) << "Whitelisted reverse flow: "
-                          << inet_ntoa( src_r_addr ) << ":" << htons(flow_id.Reverse().src_tp)
+                          << inet_ntoa( src_r_addr ) << ":" << flow_id.Reverse().src_tp
                           << ":"
-                          << inet_ntoa( dst_r_addr ) << ":" << htons(flow_id.Reverse().dst_tp);
+                          << inet_ntoa( dst_r_addr ) << ":" << flow_id.Reverse().dst_tp;
         }
     }
 
