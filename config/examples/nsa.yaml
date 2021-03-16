@@ -1,0 +1,9 @@
+ntf_app:
+  name: sample_nsa_app # required
+  ntf_type: nsa # required
+  shared_key: fhlaskjdh_falkjqwerkn # required
+  header_type: 0xccdd # required
+  token_insert: ipv6_ext_header # default
+  granularity: packet # default
+  default: deny # default
+  on_success: allow # default

@@ -1,0 +1,4 @@
+shared_key: str(required=False, none=False)
+public_key: str(required=False, none=False)
+private_key: str(required=False, none=False)
+match: any()

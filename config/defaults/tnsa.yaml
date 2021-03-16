@@ -1,0 +1,4 @@
+# Default options for trusted network service application
+granularity: packet
+default: deny
+on_success: allow

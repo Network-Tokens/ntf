@@ -1,0 +1,6 @@
+ntf_app:
+  name: sample_tnsa_app
+  ntf_type: tnsa
+  token_insert: geneve
+  geneve_field_id: 0x123
+  shared_key: test

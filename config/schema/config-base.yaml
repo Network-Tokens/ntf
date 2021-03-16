@@ -1,0 +1,11 @@
+ntf_app: include('ntf_app_config')
+---
+ntf_app_config:
+  name: str()
+  default: include('policy', required=False)
+  on_success: include('policy', required=False)
+  ntf_type: enum('tnsa', 'nsa', 'sme')
+  token_insert: enum('geneve', 'ipv6_ext_header', 'stun')
+  granularity: enum('packet', 'flow', required=False)
+---
+policy: enum('allow', 'deny')
