@@ -1,0 +1,8 @@
+ntf_app:
+  name: gateway-access
+  ntf_type: tnsa
+  token_insert: geneve
+  geneve_option:
+    class: 0xB00F
+    type: 0x2A
+  shared_key: 5db7b4f17ad7eec0b49ec655c61ac3c8
