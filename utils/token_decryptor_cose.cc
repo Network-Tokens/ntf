@@ -1,11 +1,12 @@
-#include "token_decryptor.h"
-#include "../utils/allocator_context.h"
+#include "allocator_context.h"
 #include <cose/cose.h>
+#include <cstring>
 
 
 bool
-TokenDecryptor::DecryptToken_COSE( const uint8_t * token_data,
-                                   size_t          token_length )
+DecryptToken_COSE( const uint8_t *     token_data,
+                   size_t              token_length,
+                   const std::string & shared_key )
 {
     ntf::cose::AllocatorContext ctx;
 
@@ -15,14 +16,12 @@ TokenDecryptor::DecryptToken_COSE( const uint8_t * token_data,
     auto token = (HCOSE_ENCRYPT) COSE_Decode( token_data, token_length, &type,
             COSE_encrypt_object, &ctx, &err);
     if( !token ) {
-        LOG(INFO) << "Failed to load token: " << (int) err.err;
         return false;
     }
 
     // Decrypt the Encrypt0 message using a pre-shared key
     if( !COSE_Encrypt_decrypt( token, (uint8_t*) shared_key.data(),
                 shared_key.size(), &err )) {
-        LOG(INFO) << "Failed to decrypt token: " << (int) err.err;
         return false;
     }
 
@@ -41,7 +40,6 @@ TokenDecryptor::DecryptToken_COSE( const uint8_t * token_data,
     cn_cbor_errback cn_err;
     cn_cbor * cbor = cn_cbor_decode( data, len, &ctx, &cn_err );
     if( !cbor ) {
-        LOG(INFO) << "Failed to decode decrypted payload: " << (int) cn_err.err;
         return false;
     }
 
@@ -60,8 +58,5 @@ TokenDecryptor::DecryptToken_COSE( const uint8_t * token_data,
     }
 
     // Output payload content
-    LOG(INFO) << "bip: " << std::string( bip->v.str, bip->length );
-    LOG(INFO) << "sid: " << sid->v.uint;
-    LOG(INFO) << "exp: " << exp->v.uint;
     return true;
 }

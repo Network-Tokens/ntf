@@ -10,15 +10,15 @@ pushd COSE-C
 mkdir -vp build
 
 pushd build
-cmake ..
-make
+cmake .. -DBUILD_SHARED_LIBS=OFF
+make -j cose-c
 popd
 
 sudo mkdir -vp /usr/include/{cose,cn-cbor}
 sudo cp -v include/cose/cose.h /usr/include/cose
 sudo cp -v build/_deps/project_cn_cbor-src/include/cn-cbor/cn-cbor.h \
         /usr/include/cn-cbor
-find . -name *.so -exec sudo cp -v {} /usr/lib \;
+find . -name *.a -exec sudo cp -v {} /usr/lib \;
 popd
 
-rm -rf /tmp/COSE-C
+#rm -rf /tmp/COSE-C

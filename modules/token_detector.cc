@@ -119,9 +119,6 @@ TokenDetector::ProcessBatch( Context *ctx, bess::PacketBatch *batch )
 
         if( token_found ) {
             token_offset += decap_offset;
-
-            LOG(INFO) << "Found token, " << token_length << " bytes at "
-                      << token_offset;
             set_attr<uint16_t>( this, token_offset_attr, pkt, token_offset );
             set_attr<uint16_t>( this, token_length_attr, pkt, token_length );
         }

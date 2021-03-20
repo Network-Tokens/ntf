@@ -7,27 +7,35 @@ from binascii import unhexlify
 from socket import htons
 
 
+#==============================================================================
+# Host Configuration
+#----------------------------------------------------------------------------- 
+
 MAC_ADDR = '02:dc:ab:f6:6c:16'
 IP_ADDR = '172.16.0.62'
-IP_MASK = 25
+
 GENEVE_PORT = 6081
 HEALTH_CHECK_PORT = 9000
 
 
-# NTF Configuration
-ntf::NTF(dpid=1)
+#==============================================================================
+# Geneve Proxy Pipeline
+#----------------------------------------------------------------------------- 
 
 # DPDK Port Configuration
-mac_address = int(MAC_ADDR.replace(':', ''), 16)
+dpdk_port::PMDPort(port_id=0)
 
-dpdk_port = PMDPort(port_id=0)
-dpdk_in = QueueInc(port=dpdk_port)
-dpdk_out = Update(fields=[
-    {'offset': 6, 'size': 6, 'value': mac_address }
+# Configure input & output queues
+dpdk_in::QueueInc(port=dpdk_port)
+dpdk_out::QueueOut(port=dpdk_port)
+
+# Update the MAC address
+outgoing::Update(fields=[
+    {'offset': 6, 'size': 6, 'value': int(MAC_ADDR.replace(':', ''), 16)}
 ]) 
 
 # Handle packets from the Geneve tunnel
-matchGeneve = ExactMatch(fields=[
+matchGeneve::ExactMatch(fields=[
   {'offset': 23, 'num_bytes': 1}, # Proto
   {'offset': 36, 'num_bytes': 2}, # Dest port
 ])
@@ -37,18 +45,18 @@ matchGeneve.add(fields=[
   {'value_int': htons(GENEVE_PORT)}, # Geneve
 ], gate=1)
 
-geneveDecap = GeneveDecap()
-geneveReturn = GeneveReturn()
+geneveDecap::GeneveDecap()
+geneveReturn::GeneveReturn()
 
 # ARP responder
-matchARP = ExactMatch(fields=[
+matchARP::ExactMatch(fields=[
   {'offset': 12, 'num_bytes': 2}, # Ether Type
 ])
 matchARP.set_default_gate(gate=0)
 matchARP.add(fields=[
     {'value_int': htons(0x0806) # ARP
 }], gate=1)
-arpResponder = ArpResponder()
+arpResponder::ArpResponder()
 arpResponder.add(ip=IP_ADDR, mac_addr=MAC_ADDR)
 
 # Health check
@@ -61,32 +69,62 @@ matchHealthcheck.add(fields=[
   {'value_int': 6},                        # TCP
   {'value_int': htons(HEALTH_CHECK_PORT)}, # SSH
 ], gate=1)
-healthcheckResponder = HealthcheckResponder()
+healthcheckResponder::HealthcheckResponder()
 
-# NTF: Token Detection
-detectToken = TokenDetector(
+# A sink for packets we don't care about
+ignored::Sink()
+
+
+#==============================================================================
+# Network Token Function Pipeline
+#----------------------------------------------------------------------------- 
+
+# Decrypt tokens in Geneve tunnel ID
+detectToken::TokenDetector(
     token_insert="GENEVE",
     geneve_option_class=0xB00F,
     geneve_option_type=0x2A,
 )
 
-decryptToken = TokenDecryptor(
+# Decrypt tokens using a pre-shared key
+decryptToken::TokenDecryptor(
     shared_key=unhexlify('b6415a67a0633cbae1a8c05239686eb4'),
 )
 
-# Construct the pipeline
-dpdk_in -> matchGeneve:0 -> matchARP:0 -> matchHealthcheck:0 -> Sink()
+#==============================================================================
+# Pipeline
+#----------------------------------------------------------------------------- 
 
-matchGeneve:1 -> geneveDecap:1 -> detectToken:1 -> decryptToken:1 -> geneveReturn
+# Main pipeline - try to match interesting traffic, then ignore
+dpdk_in \
+    -> matchGeneve:0 \
+    -> matchARP:0 \
+    -> matchHealthcheck:0 \
+    -> ignored
 
+# Geneve Proxy pipeline
+matchGeneve:1 \
+    -> geneveDecap:1 \
+    -> detectToken:1 \
+    -> decryptToken:1 \
+    -> geneveReturn \
+    -> outgoing
+
+# ARP pipeline
+matchARP:1 \
+    -> arpResponder \
+    -> outgoing
+
+# Healthcheck pipeline
+matchHealthcheck:1 \
+    -> healthcheckResponder \
+    -> outgoing
+
+# Outgoing pipeline - update src MAC address
+outgoing \
+    -> dpdk_out
+
+# Ignore disqualified traffic
 geneveDecap:0 -> decapFail::Sink()
 detectToken:0 -> noToken::Sink()
 decryptToken:0 -> badToken::Sink()
-
-matchARP:1 -> arpResponder -> dpdk_out
-
-matchHealthcheck:1 -> healthcheckResponder -> dpdk_out
-
-geneveReturn -> dpdk_out
-
-dpdk_out -> QueueOut(port=dpdk_port)
