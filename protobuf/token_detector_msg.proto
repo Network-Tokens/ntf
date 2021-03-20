@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package ntf.pb;
+
+message TokenDetectorArg {
+	enum TokenInsert {
+		GENEVE = 0;
+	}
+
+	TokenInsert token_insert = 1;
+	uint32 geneve_option_class = 2;
+	uint32 geneve_option_type = 3;
+}

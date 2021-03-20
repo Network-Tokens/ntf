@@ -48,11 +48,11 @@ namespace ntf {
         be16_t option_class;
         uint8_t type;
 #if __BYTE_ORDER__ == __LITTLE_ENDIAN
-        uint8_t reserved: 3;
         uint8_t length: 5;
+        uint8_t reserved: 3;
 #elif __BYTE_ORDER__ == __BIG_ENDIAN
-        uint8_t length: 5;
         uint8_t reserved: 3;
+        uint8_t length: 5;
 #endif
     };
 

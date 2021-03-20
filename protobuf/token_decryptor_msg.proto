@@ -1,0 +1,7 @@
+syntax = "proto3";
+
+package ntf.pb;
+
+message TokenDecryptorArg {
+	string shared_key = 1;
+}

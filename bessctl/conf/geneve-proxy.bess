@@ -23,57 +23,67 @@ dpdk_out = Update(fields=[
     {'offset': 6, 'size': 6, 'value': mac_address }
 ]) 
 
-# A bucket for ignored packets
-drop = Sink()
-
 # Handle packets from the Geneve tunnel
-tunnelCheck = ExactMatch(fields=[
+matchGeneve = ExactMatch(fields=[
   {'offset': 23, 'num_bytes': 1}, # Proto
   {'offset': 36, 'num_bytes': 2}, # Dest port
 ])
-tunnelCheck.set_default_gate(gate=0)
-tunnelCheck.add(fields=[
+matchGeneve.set_default_gate(gate=0)
+matchGeneve.add(fields=[
   {'value_int': 17},                 # UDP
   {'value_int': htons(GENEVE_PORT)}, # Geneve
 ], gate=1)
 
-tunnelDecap = GeneveDecap()
-tunnelDecap:0 -> drop
-
-# tunnelReturn::ReverseAddress() -> IPChecksum() -> geneveOut::MACSwap()
-tunnelReturn = GeneveReturn()
+geneveDecap = GeneveDecap()
+geneveReturn = GeneveReturn()
 
 # ARP responder
-arpCheck = ExactMatch(fields=[
+matchARP = ExactMatch(fields=[
   {'offset': 12, 'num_bytes': 2}, # Ether Type
 ])
-arpCheck.set_default_gate(gate=0)
-arpCheck.add(fields=[
+matchARP.set_default_gate(gate=0)
+matchARP.add(fields=[
     {'value_int': htons(0x0806) # ARP
 }], gate=1)
 arpResponder = ArpResponder()
 arpResponder.add(ip=IP_ADDR, mac_addr=MAC_ADDR)
 
 # Health check
-healthCheck::ExactMatch(fields=[
+matchHealthcheck::ExactMatch(fields=[
   {'offset': 23, 'num_bytes': 1}, # Proto
   {'offset': 36, 'num_bytes': 2}, # Dest port
 ])
-healthCheck.set_default_gate(gate=0)
-healthCheck.add(fields=[
+matchHealthcheck.set_default_gate(gate=0)
+matchHealthcheck.add(fields=[
   {'value_int': 6},                        # TCP
   {'value_int': htons(HEALTH_CHECK_PORT)}, # SSH
 ], gate=1)
+healthcheckResponder = HealthcheckResponder()
 
-healthCheck:1 -> HealthcheckResponder() -> dpdk_out
+# NTF: Token Detection
+detectToken = TokenDetector(
+    token_insert="GENEVE",
+    geneve_option_class=0xB00F,
+    geneve_option_type=0x2A,
+)
+
+decryptToken = TokenDecryptor(
+    shared_key='5db7b4f17ad7eec0b49ec655c61ac3c8',
+)
 
 # Construct the pipeline
-dpdk_in -> tunnelCheck:0 -> arpCheck:0 -> healthCheck:0 -> drop
+dpdk_in -> matchGeneve:0 -> matchARP:0 -> matchHealthcheck:0 -> Sink()
 
-tunnelCheck:1 -> tunnelDecap:1 -> ntf -> tunnelReturn
+matchGeneve:1 -> geneveDecap:1 -> detectToken:1 -> decryptToken:1 -> geneveReturn
 
-arpCheck:1 -> arpResponder -> dpdk_out
+geneveDecap:0 -> decapFail::Sink()
+detectToken:0 -> noToken::Sink()
+decryptToken:0 -> badToken::Sink()
 
-tunnelReturn -> dpdk_out
+matchARP:1 -> arpResponder -> dpdk_out
+
+matchHealthcheck:1 -> healthcheckResponder -> dpdk_out
+
+geneveReturn -> dpdk_out
 
 dpdk_out -> QueueOut(port=dpdk_port)
