@@ -3,13 +3,16 @@
 
 # A BESS pipeline that can be used as a Geneve proxy
 
+from binascii import unhexlify
 from socket import htons
+
 
 MAC_ADDR = '02:dc:ab:f6:6c:16'
 IP_ADDR = '172.16.0.62'
 IP_MASK = 25
 GENEVE_PORT = 6081
 HEALTH_CHECK_PORT = 9000
+
 
 # NTF Configuration
 ntf::NTF(dpid=1)
@@ -68,7 +71,7 @@ detectToken = TokenDetector(
 )
 
 decryptToken = TokenDecryptor(
-    shared_key='5db7b4f17ad7eec0b49ec655c61ac3c8',
+    shared_key=unhexlify('b6415a67a0633cbae1a8c05239686eb4'),
 )
 
 # Construct the pipeline
