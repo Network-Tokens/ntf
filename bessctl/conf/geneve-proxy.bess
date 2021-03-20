@@ -1,7 +1,7 @@
 # License : Apache-2.0
 # Copyright(c) 2020 Selfie Networks, Inc
 
-# A BESS pipeline that can be used as a Geneve proxy behind an AWS GLB.
+# A BESS pipeline that can be used as a Geneve proxy
 
 from socket import htons
 
@@ -11,16 +11,23 @@ IP_MASK = 25
 GENEVE_PORT = 6081
 HEALTH_CHECK_PORT = 9000
 
+# NTF Configuration
+ntf::NTF(dpid=1)
+
 # DPDK Port Configuration
-dpdk_port::PMDPort(port_id=0)
-dpdk_in::QueueInc(port=dpdk_port)
-dpdk_out::Update(fields=[
-    {'offset': 6, 'size': 6, 'value': int(MAC_ADDR.replace(':', ''), 16), }
-  ]) \
-  -> QueueOut(port=dpdk_port)
+mac_address = int(MAC_ADDR.replace(':', ''), 16)
+
+dpdk_port = PMDPort(port_id=0)
+dpdk_in = QueueInc(port=dpdk_port)
+dpdk_out = Update(fields=[
+    {'offset': 6, 'size': 6, 'value': mac_address }
+]) 
+
+# A bucket for ignored packets
+drop = Sink()
 
 # Handle packets from the Geneve tunnel
-tunnelCheck::ExactMatch(fields=[
+tunnelCheck = ExactMatch(fields=[
   {'offset': 23, 'num_bytes': 1}, # Proto
   {'offset': 36, 'num_bytes': 2}, # Dest port
 ])
@@ -30,24 +37,22 @@ tunnelCheck.add(fields=[
   {'value_int': htons(GENEVE_PORT)}, # Geneve
 ], gate=1)
 
-tunnelCheck:1 \
-  -> ReverseAddress() \
-  -> IPChecksum() \
-  -> MACSwap() \
-  -> dpdk_out
+tunnelDecap = GeneveDecap()
+tunnelDecap:0 -> drop
+
+# tunnelReturn::ReverseAddress() -> IPChecksum() -> geneveOut::MACSwap()
+tunnelReturn = GeneveReturn()
 
 # ARP responder
-arpCheck::ExactMatch(fields=[
+arpCheck = ExactMatch(fields=[
   {'offset': 12, 'num_bytes': 2}, # Ether Type
 ])
 arpCheck.set_default_gate(gate=0)
-arpCheck.add(fields=[{'value_int': htons(0x0806)}], gate=1)
-arpResponder::ArpResponder()
+arpCheck.add(fields=[
+    {'value_int': htons(0x0806) # ARP
+}], gate=1)
+arpResponder = ArpResponder()
 arpResponder.add(ip=IP_ADDR, mac_addr=MAC_ADDR)
-
-arpCheck:1 \
-  -> arpResponder \
-  -> dpdk_out
 
 # Health check
 healthCheck::ExactMatch(fields=[
@@ -60,12 +65,15 @@ healthCheck.add(fields=[
   {'value_int': htons(HEALTH_CHECK_PORT)}, # SSH
 ], gate=1)
 
-healthCheck:1 \
-  -> HealthcheckResponder() \
-  -> dpdk_out
+healthCheck:1 -> HealthcheckResponder() -> dpdk_out
 
-dpdk_in \
-  -> tunnelCheck:0 \
-  -> arpCheck:0 \
-  -> healthCheck: 0 \
-  -> ignored_packets::Sink()
+# Construct the pipeline
+dpdk_in -> tunnelCheck:0 -> arpCheck:0 -> healthCheck:0 -> drop
+
+tunnelCheck:1 -> tunnelDecap:1 -> ntf -> tunnelReturn
+
+arpCheck:1 -> arpResponder -> dpdk_out
+
+tunnelReturn -> dpdk_out
+
+dpdk_out -> QueueOut(port=dpdk_port)
