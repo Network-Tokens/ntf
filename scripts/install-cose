@@ -1,0 +1,24 @@
+#!/bin/bash
+
+PREFIX=/usr
+
+cd /tmp
+git clone https://github.com/cose-wg/COSE-C
+
+pushd COSE-C
+
+mkdir -vp build
+
+pushd build
+cmake ..
+make
+popd
+
+sudo mkdir -vp /usr/include/{cose,cn-cbor}
+sudo cp -v include/cose/cose.h /usr/include/cose
+sudo cp -v build/_deps/project_cn_cbor-src/include/cn-cbor/cn-cbor.h \
+        /usr/include/cn-cbor
+find . -name *.so -exec sudo cp -v {} /usr/lib \;
+popd
+
+rm -rf /tmp/COSE-C

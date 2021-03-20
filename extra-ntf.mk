@@ -1,1 +1,1 @@
-LIBS += -Wl,-Bstatic -lcjose -ljansson -lcrypto -Wl,-Bdynamic
+LIBS += -Wl,-Bstatic -lcjose -ljansson -lcrypto -Wl,-Bdynamic -lcose-c -lcn-cbor
