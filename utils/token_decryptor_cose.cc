@@ -66,7 +66,6 @@ ExtractMetadata( void *                payload,
     for( const auto & field : fields ) {
         auto item = cn_cbor_mapget_string( cbor, field.name.c_str() );
         if( !item ) {
-            LOG(INFO) << "Failed to extract metadata: no field named " << field.name;
             return false;
         }
 
@@ -84,12 +83,12 @@ ExtractMetadata( void *                payload,
             return false;
         case CN_CBOR_UINT:
             if( field.type == TokenField::INT ) {
-                set_attr<uint64_t>( module, field.attr_id, pkt, item->v.uint );
+                uint64_t val = item->v.uint;
+                set_attr<uint64_t>( module, field.attr_id, pkt, val );
                 continue;
             }
             return false;
         default:
-            LOG(INFO) << "Failed to extract metadata: unhandled type";
             return false;
         }
     }

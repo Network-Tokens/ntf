@@ -59,7 +59,7 @@ TokenValidator::ProcessBatch( Context *ctx, bess::PacketBatch *batch )
         }
 
         if( out_gate == FORWARD_GATE ) {
-            auto exp = get_attr<uint64_t>( this, bip_attr, pkt );
+            auto exp = get_attr<uint32_t>( this, exp_attr, pkt );
             uint64_t exp_ns = exp * 1e9;
             if( exp_ns < ctx->current_ns ) {
                 out_gate = FAIL_GATE;

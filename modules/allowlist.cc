@@ -48,8 +48,6 @@ AllowList::ProcessBatch( Context *ctx, bess::PacketBatch *batch )
         }
         EmitPacket( ctx, pkt, out_gate );
     }
-
-    RunNextModule( ctx, batch );
 }
 
 

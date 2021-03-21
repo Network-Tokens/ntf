@@ -88,7 +88,7 @@ detectToken::TokenDetector(
 
 # Decrypt tokens using a pre-shared key
 decryptToken::TokenDecryptor(
-    shared_key=unhexlify('b6415a67a0633cbae1a8c05239686eb4'),
+    shared_key=unhexlify('dccf29f56a179352236c13490ab48ea2'),
     fields=[
         {'name': 'bip', 'type': 'IPV4'},
         {'name': 'sid', 'type': 'INT'},
@@ -101,6 +101,9 @@ validateToken::TokenValidator()
 
 # Fast-path for flows that have already matched a token
 allowList::AllowList()
+
+# AllowList wants an 'exp' attribute but it will only be set on gate 1.
+defaultExp::SetMetadata(attrs=[{'name': 'exp', 'size': 8, 'value_int': 0}])
 
 #==============================================================================
 # Pipeline
@@ -116,6 +119,7 @@ dpdk_in \
 # Geneve Proxy pipeline
 matchGeneve:1 \
     -> geneveDecap:1 \
+    -> defaultExp \
     -> 0:allowList:0 \
     -> detectToken:1 \
     -> decryptToken:1 \

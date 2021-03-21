@@ -37,7 +37,6 @@ TokenDecryptor::Init( const TokenDecryptorArg & arg )
             return CommandFailure( -1, "Invalid TokenField.type" );
         }
         fields.emplace_back( Field { field.name(), field.type(), attr } );
-        LOG(INFO) << "Registered field: " << field.name();
     }
 
     return CommandSuccess();
