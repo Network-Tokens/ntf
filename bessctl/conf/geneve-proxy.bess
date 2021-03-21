@@ -36,13 +36,13 @@ outgoing::Update(fields=[
 
 # Handle packets from the Geneve tunnel
 matchGeneve::ExactMatch(fields=[
-  {'offset': 23, 'num_bytes': 1}, # Proto
-  {'offset': 36, 'num_bytes': 2}, # Dest port
+    {'offset': 23, 'num_bytes': 1}, # Proto
+    {'offset': 36, 'num_bytes': 2}, # Dest port
 ])
 matchGeneve.set_default_gate(gate=0)
 matchGeneve.add(fields=[
-  {'value_int': 17},                 # UDP
-  {'value_int': htons(GENEVE_PORT)}, # Geneve
+    {'value_int': 17},                 # UDP
+    {'value_int': htons(GENEVE_PORT)}, # Geneve
 ], gate=1)
 
 geneveDecap::GeneveDecap()
@@ -50,7 +50,7 @@ geneveReturn::GeneveReturn()
 
 # ARP responder
 matchARP::ExactMatch(fields=[
-  {'offset': 12, 'num_bytes': 2}, # Ether Type
+    {'offset': 12, 'num_bytes': 2}, # Ether Type
 ])
 matchARP.set_default_gate(gate=0)
 matchARP.add(fields=[
@@ -61,13 +61,13 @@ arpResponder.add(ip=IP_ADDR, mac_addr=MAC_ADDR)
 
 # Health check
 matchHealthcheck::ExactMatch(fields=[
-  {'offset': 23, 'num_bytes': 1}, # Proto
-  {'offset': 36, 'num_bytes': 2}, # Dest port
+    {'offset': 23, 'num_bytes': 1}, # Proto
+    {'offset': 36, 'num_bytes': 2}, # Dest port
 ])
 matchHealthcheck.set_default_gate(gate=0)
 matchHealthcheck.add(fields=[
-  {'value_int': 6},                        # TCP
-  {'value_int': htons(HEALTH_CHECK_PORT)}, # SSH
+    {'value_int': 6},                        # TCP
+    {'value_int': htons(HEALTH_CHECK_PORT)}, # SSH
 ], gate=1)
 healthcheckResponder::HealthcheckResponder()
 
@@ -89,7 +89,18 @@ detectToken::TokenDetector(
 # Decrypt tokens using a pre-shared key
 decryptToken::TokenDecryptor(
     shared_key=unhexlify('b6415a67a0633cbae1a8c05239686eb4'),
+    fields=[
+        {'name': 'bip', 'type': 'IPV4'},
+        {'name': 'sid', 'type': 'INT'},
+        {'name': 'exp', 'type': 'INT'},
+    ],
 )
+
+# Validate bound IP address & expiry
+validateToken::TokenValidator()
+
+# Fast-path for flows that have already matched a token
+allowList::AllowList()
 
 #==============================================================================
 # Pipeline
@@ -105,8 +116,11 @@ dpdk_in \
 # Geneve Proxy pipeline
 matchGeneve:1 \
     -> geneveDecap:1 \
+    -> 0:allowList:0 \
     -> detectToken:1 \
     -> decryptToken:1 \
+    -> validateToken:1 \
+    -> 1:allowList:1 \
     -> geneveReturn \
     -> outgoing
 
@@ -127,4 +141,5 @@ outgoing \
 # Ignore disqualified traffic
 geneveDecap:0 -> decapFail::Sink()
 detectToken:0 -> noToken::Sink()
-decryptToken:0 -> badToken::Sink()
+decryptToken:0 -> decryptFail::Sink()
+validateToken:0 -> badToken::Sink()

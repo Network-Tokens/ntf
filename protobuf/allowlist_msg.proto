@@ -1,0 +1,8 @@
+syntax = "proto3";
+
+package ntf.pb;
+
+message AllowListArg {
+    uint32 default_lifetime = 1;
+    bool add_reverse_flow = 2;
+}

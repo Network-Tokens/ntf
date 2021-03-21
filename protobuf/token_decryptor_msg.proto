@@ -2,6 +2,17 @@ syntax = "proto3";
 
 package ntf.pb;
 
+message TokenField {
+    enum FieldType {
+        INT = 0;
+        IPV4 = 1;
+    }
+
+    string name = 1;
+    FieldType type = 3;
+}
+
 message TokenDecryptorArg {
-	bytes shared_key = 1;
+    bytes shared_key = 1;
+    repeated TokenField fields = 2;
 }
