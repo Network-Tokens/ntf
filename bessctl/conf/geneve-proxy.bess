@@ -88,7 +88,7 @@ detectToken::TokenDetector(
 
 # Decrypt tokens using a pre-shared key
 decryptToken::TokenDecryptor(
-    shared_key=unhexlify('dccf29f56a179352236c13490ab48ea2'),
+    shared_key=unhexlify('dd4fa3d6c107a02a34f654218276b03e'),
     fields=[
         {'name': 'bip', 'type': 'IPV4'},
         {'name': 'sid', 'type': 'INT'},
