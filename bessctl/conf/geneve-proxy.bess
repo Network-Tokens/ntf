@@ -6,6 +6,13 @@
 from binascii import unhexlify
 from socket import htons
 import requests
+import os, sys
+
+dir_path = os.path.dirname(os.path.realpath(__file__))
+sys.path.append(dir_path)
+os.chdir(dir_path)
+
+from config import NtfConfig
 
 
 #==============================================================================
@@ -25,6 +32,8 @@ def ip_for_mac(mac):
 GENEVE_PORT = 6081
 HEALTH_CHECK_PORT = 9000
 
+filename = os.path.join(dir_path, 'examples/tnsa-gateway-access.yaml')
+config = NtfConfig(filename=filename)
 
 #==============================================================================
 # Geneve Proxy Pipeline
@@ -91,21 +100,23 @@ ignored::Sink()
 #----------------------------------------------------------------------------- 
 
 # Decrypt tokens in Geneve tunnel ID
-detectToken::TokenDetector(
-    token_insert="GENEVE",
-    geneve_option_class=0xB00F,
-    geneve_option_type=0x2A,
-)
+if config['token_insert'] == 'geneve':
+    detectToken::TokenDetector(
+        token_insert="GENEVE",
+        geneve_option_class=config['geneve_option']['class'],
+        geneve_option_type=config['geneve_option']['type'],
+    )
 
 # Decrypt tokens using a pre-shared key
-decryptToken::TokenDecryptor(
-    shared_key=unhexlify('dd4fa3d6c107a02a34f654218276b03e'),
-    fields=[
-        {'name': 'bip', 'type': 'IPV4'},
-        {'name': 'sid', 'type': 'INT'},
-        {'name': 'exp', 'type': 'INT'},
-    ],
-)
+if config['ntf_type'] == 'tnsa':
+    decryptToken::TokenDecryptor(
+        shared_key=unhexlify(config['shared_key']),
+        fields=[
+            {'name': 'bip', 'type': 'IPV4'},
+            {'name': 'sid', 'type': 'INT'},
+            {'name': 'exp', 'type': 'INT'},
+        ],
+    )
 
 # Validate bound IP address & expiry
 validateToken::TokenValidator()

@@ -6,19 +6,17 @@ BASE_CONFIG_SCHEMA = 'schema/config-base.yaml'
 
 class NtfConfig:
     def __init__(self, filename=None, data=None):
-        if data:
-            self.data = data
-        elif filename:
-            self.data = yamale.make_data(filename)
+        if data is None:
+            data = yamale.make_data(filename)
 
         # Ensure the base configuration is valid.  Validate with strict=False
         # because there will be options we don't recognize until we know the
         # NTF & token insert type.
         schema = yamale.make_schema(BASE_CONFIG_SCHEMA)
-        yamale.validate(schema, self.data, strict=False)
+        yamale.validate(schema, data, strict=False)
 
         # Valid base config - add schemas
-        ntf_app = self.data[0][0]['ntf_app']
+        ntf_app = data[0][0]['ntf_app']
 
         for prop_name in ['ntf_type', 'token_insert']:
             prop_value = ntf_app[prop_name]
@@ -33,5 +31,8 @@ class NtfConfig:
                 schema.includes['ntf_app_config'].dict[key] = value
 
         # Revalidate with strict schema
-        yamale.validate(schema, self.data)
+        yamale.validate(schema, data)
+        self.data = data[0][0]['ntf_app']
 
+    def __getitem__(self, key):
+        return self.data[key]
