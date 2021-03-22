@@ -11,7 +11,6 @@ from socket import htons
 # Host Configuration
 #----------------------------------------------------------------------------- 
 
-MAC_ADDR = '02:dc:ab:f6:6c:16'
 IP_ADDR = '172.16.0.62'
 
 GENEVE_PORT = 6081
@@ -31,7 +30,7 @@ dpdk_out::QueueOut(port=dpdk_port)
 
 # Update the MAC address
 outgoing::Update(fields=[
-    {'offset': 6, 'size': 6, 'value': int(MAC_ADDR.replace(':', ''), 16)}
+    {'offset': 6, 'size': 6, 'value': int(dpdk_port.mac_addr.replace(':', ''), 16)}
 ]) 
 
 # Handle packets from the Geneve tunnel
@@ -57,7 +56,7 @@ matchARP.add(fields=[
     {'value_int': htons(0x0806) # ARP
 }], gate=1)
 arpResponder::ArpResponder()
-arpResponder.add(ip=IP_ADDR, mac_addr=MAC_ADDR)
+arpResponder.add(ip=IP_ADDR, mac_addr=dpdk_port.mac_addr)
 
 # Health check
 matchHealthcheck::ExactMatch(fields=[
