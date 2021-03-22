@@ -5,13 +5,22 @@
 
 from binascii import unhexlify
 from socket import htons
+import requests
 
 
 #==============================================================================
 # Host Configuration
 #----------------------------------------------------------------------------- 
 
-IP_ADDR = '172.16.0.62'
+def mac2bin(mac):
+    return int(mac.replace(':', ''), 16)
+
+def ip_for_mac(mac):
+    url = 'http://169.254.169.254/latest/meta-data/network/interfaces/macs/%s/local-ipv4s'
+    r = requests.get(url % mac)
+    r.raise_for_status()
+    return r.text
+
 
 GENEVE_PORT = 6081
 HEALTH_CHECK_PORT = 9000
@@ -30,7 +39,7 @@ dpdk_out::QueueOut(port=dpdk_port)
 
 # Update the MAC address
 outgoing::Update(fields=[
-    {'offset': 6, 'size': 6, 'value': int(dpdk_port.mac_addr.replace(':', ''), 16)}
+    {'offset': 6, 'size': 6, 'value': mac2bin(dpdk_port.mac_addr)}
 ]) 
 
 # Handle packets from the Geneve tunnel
@@ -56,7 +65,10 @@ matchARP.add(fields=[
     {'value_int': htons(0x0806) # ARP
 }], gate=1)
 arpResponder::ArpResponder()
-arpResponder.add(ip=IP_ADDR, mac_addr=dpdk_port.mac_addr)
+arpResponder.add(
+    ip=ip_for_mac(dpdk_port.mac_addr),
+    mac_addr=dpdk_port.mac_addr,
+)
 
 # Health check
 matchHealthcheck::ExactMatch(fields=[
