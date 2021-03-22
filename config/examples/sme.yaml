@@ -4,7 +4,9 @@ ntf_app:
   shared_key: fhlaskjdh_falkjqwerkn # optional - shared/or public-private
   public_key: asdfadsfalsdkfalsdkjfh # optional
   private_key: qqpweorqiueypzcnvfadf # optional
-  geneve_field_id: 0x5384 # required
+  geneve_option:
+    class: 0x5384 # required
+    type: 0x34
   token_insert: geneve # default
   granularity: packet # default
   match:

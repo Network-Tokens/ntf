@@ -10,3 +10,6 @@ class TestConfig:
 
     def test_validate_sme_config(self):
         config = NtfConfig('examples/sme.yaml')
+
+    def test_validate_geneve_proxy_config(self):
+        config = NtfConfig('examples/tnsa-gateway-access.yaml')

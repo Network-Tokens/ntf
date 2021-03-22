@@ -2,5 +2,7 @@ ntf_app:
   name: sample_tnsa_app
   ntf_type: tnsa
   token_insert: geneve
-  geneve_field_id: 0x123
+  geneve_option:
+    class: 0x1230
+    type: 0x12
   shared_key: test
