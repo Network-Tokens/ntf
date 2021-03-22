@@ -7,7 +7,7 @@
 
 class TokenValidator final : public Module {
 public:
-    static const gate_idx_t kNumOGates = 2;
+    static const gate_idx_t kNumOGates = 3;
 
     TokenValidator() : Module() {}
 

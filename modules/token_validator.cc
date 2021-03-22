@@ -7,7 +7,7 @@ using bess::utils::be32_t;
 using bess::utils::Ethernet;
 using bess::utils::Ipv4;
 
-enum { FAIL_GATE = 0, FORWARD_GATE };
+enum { FAIL_GATE = 0, FORWARD_GATE, ALLOW_GATE };
 
 CommandResponse
 TokenValidator::Init( const ntf::pb::TokenValidatorArg & )
@@ -65,6 +65,11 @@ TokenValidator::ProcessBatch( Context *ctx, bess::PacketBatch *batch )
                 out_gate = FAIL_GATE;
             }
         }
+
+        // TODO:
+        // if( token config granularity == FLOW ) {
+        //     out_gate = ALLOW_GATE;
+        // }
 
         EmitPacket( ctx, pkt, out_gate );
     }
