@@ -1,3 +1,8 @@
+/*
+ * License : Apache-2.0
+ * Copyright(c) 2021 Selfie Networks, Inc
+ */
+
 #include "healthcheck_responder.h"
 
 #include "utils/ether.h"

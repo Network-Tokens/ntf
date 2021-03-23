@@ -1,3 +1,8 @@
+/*
+ * License : Apache-2.0
+ * Copyright(c) 2021 Selfie Networks, Inc
+ */
+
 #include "packet.h"
 #include "token_decryptor.h"
 #include "utils/allocator_context.h"

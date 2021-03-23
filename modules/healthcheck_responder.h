@@ -1,3 +1,8 @@
+/*
+ * License : Apache-2.0
+ * Copyright(c) 2021 Selfie Networks, Inc
+ */
+
 #ifndef BESS_MODULES_HEALTHCHECKRESPONDER_H_
 #define BESS_MODULES_HEALTHCHECKRESPONDER_H_
 
@@ -9,6 +14,14 @@
 
 static const size_t kMaxVariable = 16;
 
+/**
+ * A simple TCP healthcheck responder.
+ *
+ * If the incoming packet is a TCP SYN, the packet will be changed to a TCP
+ * SYN-ACK addressed to the sender.  All other packets are dropped.  This
+ * allows the pipeline to respond directly to a healthcheck mechanism from
+ * within DPDK.
+ */
 class HealthcheckResponder final : public Module {
 public:
   HealthcheckResponder() : Module() {}

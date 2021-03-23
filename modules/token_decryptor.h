@@ -1,3 +1,8 @@
+/*
+ * License : Apache-2.0
+ * Copyright(c) 2020 Selfie Networks, Inc
+ */
+
 #ifndef BESS_MODULES_TOKEN_DECRYPTOR_H_
 #define BESS_MODULES_TOKEN_DECRYPTOR_H_
 
@@ -7,6 +12,10 @@
 #include <vector>
 
 
+/**
+ * Contains a field that can be extracted from a token and the metadata
+ * attribute ID to store the field from matched tokens in.
+ */
 struct Field {
     std::string name;
     ntf::pb::TokenField::FieldType type;
@@ -14,6 +23,24 @@ struct Field {
 };
 
 
+/**
+ * Decrypts network tokens found in packets.
+ *
+ * Tokens should first be detected upstream using the TokenDetector module, to
+ * set the appropriate metadata attributes.  Packets that contain tokens that
+ * are successfully decrytped will be emitted on out-gate 1.  Tokens that fail
+ * to decrypt will be emitted on out-gate 0.
+ *
+ * This module uses the following metadata attributes:
+ *
+ * token_offset: the ABSOLUTE offset of the token in the packet (ignoring
+ *               decap_offset)
+ *
+ * token_length: the length of the token data
+ *
+ * Currently, the TokenDecryptor supports only a single COSE token, but will be
+ * extended to support multiple types of different tokens.
+ */
 class TokenDecryptor final : public Module {
 public:
     static const gate_idx_t kNumOGates = 2;

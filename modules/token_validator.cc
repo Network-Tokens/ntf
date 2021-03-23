@@ -1,3 +1,8 @@
+/*
+ * License : Apache-2.0
+ * Copyright(c) 2021 Selfie Networks, Inc
+ */
+
 #include "token_validator.h"
 #include "utils/endian.h"
 #include "utils/ether.h"

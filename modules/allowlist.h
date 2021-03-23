@@ -1,3 +1,8 @@
+/*
+ * License : Apache-2.0
+ * Copyright(c) 2021 Selfie Networks, Inc
+ */
+
 #ifndef BESS_MODULES_ALLOWLIST_H_
 #define BESS_MODULES_ALLOWLIST_H_
 
@@ -7,6 +12,30 @@
 #include "pb/allowlist_msg.pb.h"
 
 
+/**
+ * Generic Allow-list.  Currently supports TCP4 and UDP4 protocols.
+ *
+ * The module has two input gates and two output gates and operates as follows.
+ *
+ * - Packets received via in-gate 0 are by default emitted on out-gate 0
+ * - Packets received via in-gate 0 with a corresponding flow on the allow-list
+ *   are emitted on out-gate 1
+ * - Packets received via in-gate 1 are always emitted on out-gate 1 and the
+ *   corresponding flow is added to the allow list
+ *
+ * TODO: Packets added to the allow-list will have the configured metadata
+ * attributes saved in the flow table.  This means packets that arrive on
+ * in-gate 0 that belong to a flow on the allow-list will be emitted on
+ * out-gate 1 with the same metadata attributes attached, whether they have a
+ * token attached or not.
+ *
+ * This module depends on the following metadata attributes:
+ *
+ * - decap_offset: look for packets at this offset (used in conjunction with
+ *                 decapsulation modules like GeneveDecap)
+ * - exp:          indicates absolute expiry time of the entry in the
+ *                 allow-list
+ */
 class AllowList final : public Module {
 public:
     static const gate_idx_t kNumIGates = 2;
